@@ -356,6 +356,10 @@
                 <label>具体问题描述 <span class="req">*</span></label>
                 <textarea id="f_issue" placeholder="如：底板刮花 / 不通电 / 蒸汽漏水 / 指示灯不亮……"></textarea>
               </div>
+              <div class="field full">
+                <label>备注 <span style="font-weight:400;color:var(--ink3)">（选填）</span></label>
+                <textarea id="f_note" placeholder="如：物流单号 / 客户要求 / 处理说明……"></textarea>
+              </div>
             </div>
             <div class="form-actions">
               <button type="button" class="btn btn-ghost" id="btnReset">清空</button>
@@ -383,7 +387,7 @@
           <div class="tbl-wrap" id="retWrap">
             <table>
               <thead><tr>
-                <th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>问题描述</th><th>补发进度</th><th>操作</th>
+                <th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>问题描述</th><th>备注</th><th>补发进度</th><th>操作</th>
               </tr></thead>
               <tbody id="retTbody"></tbody>
             </table>
@@ -398,7 +402,7 @@
         <div class="filter-bar">
           <div class="field" style="min-width:130px"><label>补发状态</label>
             <select id="q2_status" onchange="renderTrack()">
-              <option value="">全部</option><option>待补发</option><option>部分补发</option><option>已补完</option>
+              <option value="">全部</option><option>待补发</option><option>部分补发</option><option>已补完</option><option>无需补发</option>
             </select>
           </div>
           <div class="field" style="min-width:130px"><label>供应商</label><select id="q2_sup" onchange="renderTrack()"><option value="">全部</option></select></div>
@@ -471,7 +475,7 @@
           <div class="card-head"><h2 class="section" style="margin-bottom:0"><span class="dot"></span>筛选结果明细</h2><span style="font-size:.8rem;color:var(--ink3)" id="st_detail_n"></span></div>
           <div class="tbl-wrap" id="stDetailWrap">
             <table>
-              <thead><tr><th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>补发状态</th></tr></thead>
+              <thead><tr><th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>备注</th><th>补发状态</th></tr></thead>
               <tbody id="st_detail_tb"></tbody>
             </table>
             <div class="empty" id="st_detail_e" style="display:none">无符合条件的记录</div>
@@ -586,6 +590,7 @@ const sum = (arr, f) => arr.reduce((a,b) => a + f(b), 0);
 
 function repQtyOf(retId){ return sum(reps.filter(r => r.returnId === retId), r => +r.qty); }
 function repStatus(r){
+  if (r.insp === "合格") return {name:"无需补发", cls:"b-ok", done:+r.qty, left:0};
   const done = repQtyOf(r.id);
   if (done <= 0) return {name:"待补发", cls:"b-wait", done, left:+r.qty};
   if (done < +r.qty) return {name:"部分补发", cls:"b-part", done, left:+r.qty - done};
@@ -653,7 +658,8 @@ $("btnSave").onclick = () => {
     supplier: $("f_supplier").value.trim(),
     insp,
     issue: insp === "不合格" ? $("f_issue").value.trim() : "",
-    express: $("f_express").value.trim()
+    express: $("f_express").value.trim(),
+    note: $("f_note").value.trim()
   };
   if (!rec.date) return toast("请选择退货日期");
   if (!rec.orderNo) return toast("请填写订单号");
@@ -679,7 +685,7 @@ function resetForm(){
   $("f_model").value = MODELS[0]; fillColors();
   segSet("f_volt","220V"); segSet("f_insp","待检");
   $("issueWrap").style.display = "none"; $("f_qty").value = 1;
-  $("f_supplier").value = DEFAULT_SUPPLIER; $("f_express").value = "";
+  $("f_supplier").value = DEFAULT_SUPPLIER; $("f_express").value = ""; $("f_note").value = "";
 }
 
 /* ================= 退货记录列表 ================= */
@@ -688,7 +694,7 @@ function renderReturns(){
   const fi = $("q1_insp").value;
   const list = returns.filter(r =>
     (!fi || r.insp === fi) &&
-    (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express].join(" ").toLowerCase().includes(kw))
+    (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express, r.note].join(" ").toLowerCase().includes(kw))
   );
   $("retCount").textContent = `（共 ${list.length} 笔 / ${sum(list, r => +r.qty)} 台）`;
   const wrap = $("retWrap"), cards = $("retCards");
@@ -709,6 +715,7 @@ function renderReturns(){
           <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
           <div><span>补发进度</span><i>${st.done}/${r.qty} ${st.name}</i></div>
           ${r.issue ? `<div class="full"><span>问题描述</span><i>${esc(r.issue)}</i></div>` : ""}
+          ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
         </div>
         <div class="m-actions">
           <button class="btn btn-ghost" onclick="editRet('${r.id}')">✏️ 编辑</button>
@@ -728,6 +735,7 @@ function renderReturns(){
         <td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
         <td>${inspBadge(r.insp)}</td>
         <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.issue)}">${esc(r.issue) || "—"}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
         <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${st.done}/${r.qty}</span></div></td>
         <td>
           <button class="btn btn-ghost btn-sm" onclick="editRet('${r.id}')">编辑</button>
@@ -747,6 +755,7 @@ function editRet(id){
   $("f_supplier").value = r.supplier; segSet("f_insp", r.insp);
   $("issueWrap").style.display = r.insp === "不合格" ? "" : "none";
   $("f_issue").value = r.issue || "";
+  $("f_note").value = r.note || "";
   window.scrollTo({top:0, behavior:"smooth"});
 }
 function delRet(id){
@@ -798,6 +807,7 @@ function renderTrack(){
           <div><span>已补</span><i style="color:var(--green);font-weight:600">${st.done}</i></div>
           <div><span>未补</span><i style="color:${st.left>0?"var(--red)":"var(--ink3)"};font-weight:600">${st.left}</i></div>
           <div><span>完成率</span><i>${pct}%</i></div>
+          ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
         </div>
         <div class="m-actions">
           ${st.left > 0 ? `<button class="btn btn-green" onclick="openRep('${r.id}')">＋ 补发登记</button>` : ""}
@@ -831,8 +841,11 @@ function openRep(retId){
   repTarget = returns.find(r => r.id === retId); if (!repTarget) return;
   const st = repStatus(repTarget);
   $("repTitle").textContent = st.left > 0 ? "补发登记" : "补发明细";
-  $("repInfo").innerHTML = `退货单：<b>${esc(repTarget.date)}</b> ｜ 订单号 <b>${esc(repTarget.orderNo) || "—"}</b> ｜ <b>${esc(repTarget.model)}</b> ${esc(repTarget.color)} ${esc(repTarget.volt)} ${esc(repTarget.plug)}<br>
-    供应商：${esc(repTarget.supplier)} ｜ 应补 <b>${repTarget.qty}</b> 台，已补 <b style="color:var(--green)">${st.done}</b> 台，未补 <b style="color:var(--red)">${st.left}</b> 台`;
+  $("repInfo").innerHTML = repTarget.insp === "合格"
+    ? `退货单：<b>${esc(repTarget.date)}</b> ｜ 订单号 <b>${esc(repTarget.orderNo) || "—"}</b> ｜ <b>${esc(repTarget.model)}</b> ${esc(repTarget.color)} ${esc(repTarget.volt)} ${esc(repTarget.plug)}<br>
+      供应商：${esc(repTarget.supplier)} ｜ 检验<b style="color:var(--green)">合格</b>，无需补发（历史补发记录仅供查阅）`
+    : `退货单：<b>${esc(repTarget.date)}</b> ｜ 订单号 <b>${esc(repTarget.orderNo) || "—"}</b> ｜ <b>${esc(repTarget.model)}</b> ${esc(repTarget.color)} ${esc(repTarget.volt)} ${esc(repTarget.plug)}<br>
+      供应商：${esc(repTarget.supplier)} ｜ 应补 <b>${repTarget.qty}</b> 台，已补 <b style="color:var(--green)">${st.done}</b> 台，未补 <b style="color:var(--red)">${st.left}</b> 台`;
   $("r_date").value = today(); $("r_qty").value = Math.max(1, st.left);
   $("r_model").value = ""; $("r_model").placeholder = `默认：${repTarget.model}`;
   $("r_note").value = "";
@@ -885,7 +898,8 @@ function renderStats(){
   const total = sum(list, r => +r.qty);
   const bad = sum(list.filter(r => r.insp === "不合格"), r => +r.qty);
   const rep = sum(list, r => repQtyOf(r.id));
-  const due = total - Math.min(rep, total);
+  const need = sum(list.filter(r => r.insp !== "合格"), r => +r.qty);  // 需补发基数（合格除外）
+  const due = sum(list, r => repStatus(r).left);
   const dueN = list.filter(r => repStatus(r).left > 0).length;
 
   $("st_total").textContent = total;
@@ -893,21 +907,22 @@ function renderStats(){
   $("st_bad").textContent = bad;
   $("st_bad_r").textContent = `占比 ${total ? Math.round(bad/total*100) : 0}%`;
   $("st_rep").textContent = rep;
-  $("st_rep_r").textContent = `补发完成率 ${total ? Math.round(Math.min(rep,total)/total*100) : 0}%`;
+  $("st_rep_r").textContent = `补发完成率 ${need ? Math.round(Math.min(rep,need)/need*100) : 0}%`;
   $("st_due").textContent = due;
   $("st_due_n").textContent = `${dueN} 笔未结清`;
 
   /* 按型号 */
   const byM = {};
   list.forEach(r => {
-    byM[r.model] = byM[r.model] || {qty:0, rep:0, bad:0};
+    byM[r.model] = byM[r.model] || {qty:0, rep:0, bad:0, ok:0};
     byM[r.model].qty += +r.qty; byM[r.model].rep += repQtyOf(r.id);
     if (r.insp === "不合格") byM[r.model].bad += +r.qty;
+    if (r.insp === "合格") byM[r.model].ok += +r.qty;
   });
   const mRows = Object.entries(byM).sort((a,b) => b[1].qty - a[1].qty);
   $("st_model_e").style.display = mRows.length ? "none" : "";
   $("st_model_tb").innerHTML = mRows.map(([m, d]) => {
-    const left = Math.max(0, d.qty - d.rep);
+    const left = Math.max(0, (d.qty - d.ok) - d.rep);
     return `<tr><td><b>${esc(m)}</b></td><td>${d.qty}</td><td style="color:var(--green)">${d.rep}</td>
       <td style="color:${left>0?"var(--red)":"var(--ink3)"}">${left}</td>
       <td>${d.bad ? `<span style="color:var(--red)">${d.bad}</span>` : "—"}</td></tr>`;
@@ -916,14 +931,16 @@ function renderStats(){
   /* 按供应商 */
   const byS = {};
   list.forEach(r => {
-    byS[r.supplier] = byS[r.supplier] || {qty:0, rep:0};
+    byS[r.supplier] = byS[r.supplier] || {qty:0, rep:0, ok:0};
     byS[r.supplier].qty += +r.qty; byS[r.supplier].rep += repQtyOf(r.id);
+    if (r.insp === "合格") byS[r.supplier].ok += +r.qty;
   });
   const sRows = Object.entries(byS).sort((a,b) => b[1].qty - a[1].qty);
   $("st_sup_e").style.display = sRows.length ? "none" : "";
   $("st_sup_tb").innerHTML = sRows.map(([s, d]) => {
-    const left = Math.max(0, d.qty - d.rep);
-    const rate = d.qty ? Math.round(Math.min(d.rep, d.qty) / d.qty * 100) : 0;
+    const left = Math.max(0, (d.qty - d.ok) - d.rep);
+    const base = d.qty - d.ok;
+    const rate = base > 0 ? Math.round(Math.min(d.rep, base) / base * 100) : 0;
     return `<tr><td><b>${esc(s)}</b></td><td>${d.qty}</td><td style="color:var(--green)">${d.rep}</td>
       <td style="color:${left>0?"var(--red)":"var(--ink3)"}">${left}</td>
       <td><div class="prog"><div class="prog-bar"><i style="width:${rate}%"></i></div><span>${rate}%</span></div></td></tr>`;
@@ -960,6 +977,7 @@ function renderStats(){
           <div><span>数量</span><i>${r.qty} 台</i></div>
           <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
           <div><span>补发状态</span><i><span class="badge ${st.cls}">${st.name}</span></i></div>
+          ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
         </div>
       </div>`;
     }).join("") : '<div class="empty" style="display:block"><span class="ico">🔍</span>无符合条件的记录</div>';
@@ -970,7 +988,9 @@ function renderStats(){
       const st = repStatus(r);
       return `<tr><td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
         <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td><td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
-        <td>${inspBadge(r.insp)}</td><td><span class="badge ${st.cls}">${st.name}</span></td></tr>`;
+        <td>${inspBadge(r.insp)}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
+        <td><span class="badge ${st.cls}">${st.name}</span></td></tr>`;
     }).join("");
   }
   updateSideStats();
@@ -998,10 +1018,10 @@ function dlCSV(filename, head, rows){
 }
 function exportCSV(){
   if (!returns.length) return toast("没有数据可导出");
-  const head = ["退货日期","订单号","快递单号","型号","颜色","电压","插头规格","退货数量","供应商","检验情况","问题描述","已补数量","未补数量","补发状态"];
+  const head = ["退货日期","订单号","快递单号","型号","颜色","电压","插头规格","退货数量","供应商","检验情况","问题描述","备注","已补数量","未补数量","补发状态"];
   const rows = returns.map(r => {
     const st = repStatus(r);
-    return [r.date, r.orderNo || "", r.express || "", r.model, r.color, r.volt, r.plug, r.qty, r.supplier, r.insp, r.issue || "", st.done, st.left, st.name];
+    return [r.date, r.orderNo || "", r.express || "", r.model, r.color, r.volt, r.plug, r.qty, r.supplier, r.insp, r.issue || "", r.note || "", st.done, st.left, st.name];
   });
   dlCSV(`熨斗退货台账_${today()}.csv`, head, rows);
   toast("退货 CSV 已导出（可用 Excel/WPS 打开）");
@@ -1048,8 +1068,8 @@ function toast(msg){
 function seedDemo(){
   if (returns.length && !confirm("载入示例数据会追加到现有数据，继续？")) return;
   const demo = [
-    {date:"2026-08-02", orderNo:"DD202608001", model:"M2", color:"红", volt:"220V", plug:"国标", qty:5, supplier:"东莞", insp:"不合格", issue:"底板刮花、蒸汽漏水"},
-    {date:"2026-08-05", orderNo:"DD202608002", model:"L2", color:"紫", volt:"110V", plug:"美规", qty:3, supplier:"东莞", insp:"合格", issue:""},
+    {date:"2026-08-02", orderNo:"DD202608001", model:"M2", color:"红", volt:"220V", plug:"国标", qty:5, supplier:"东莞", insp:"不合格", issue:"底板刮花、蒸汽漏水", note:"客户要求退换新机"},
+    {date:"2026-08-05", orderNo:"DD202608002", model:"L2", color:"紫", volt:"110V", plug:"美规", qty:3, supplier:"东莞", insp:"合格", issue:"", note:"仅退货退款，无需补发"},
     {date:"2026-08-08", orderNo:"DD202608003", model:"L3", color:"绿", volt:"220V", plug:"欧规", qty:2, supplier:"东莞", insp:"不合格", issue:"不通电"},
     {date:"2026-08-12", orderNo:"DD202608004", model:"L", color:"红", volt:"220V", plug:"国标", qty:4, supplier:"东莞", insp:"待检", issue:""},
     {date:"2026-08-15", orderNo:"DD202608005", model:"M2", color:"灰", volt:"110V", plug:"美规", qty:6, supplier:"东莞", insp:"不合格", issue:"指示灯不亮"},
