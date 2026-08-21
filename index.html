@@ -166,6 +166,15 @@
   @keyframes scanmove{0%{top:14%}50%{top:86%}100%{top:14%}}
   .scan-tip{font-size:.82rem;color:var(--ink2);text-align:center;margin:14px 2px 4px;line-height:1.6}
   .scan-tip.err{color:var(--red)}
+  /* ===== 不合格原因选择 ===== */
+  .reason-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .reason-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;font-size:.9rem;transition:border-color .15s,background .15s;user-select:none;line-height:1.3}
+  .reason-item:has(input:checked){border-color:var(--blue);background:var(--blue-bg);color:var(--blue-d);font-weight:600}
+  .reason-item input{width:18px;height:18px;accent-color:var(--blue);flex-shrink:0;margin:0}
+  .reason-sum{display:flex;flex-wrap:wrap;gap:8px;min-height:34px}
+  .chip{background:var(--blue-bg);color:var(--blue-d);border-radius:999px;padding:6px 13px;font-size:.83rem;font-weight:600;display:inline-flex;align-items:center}
+  .reason-actions{margin-top:10px}
+  @media(max-width:380px){.reason-grid{grid-template-columns:1fr}}
 
   .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a2233;color:#fff;
     padding:12px 24px;border-radius:11px;font-size:.88rem;opacity:0;pointer-events:none;transition:.25s;z-index:99;box-shadow:0 8px 26px rgba(0,0,0,.3)}
@@ -353,8 +362,9 @@
                 </div>
               </div>
               <div class="field full" id="issueWrap" style="display:none">
-                <label>具体问题描述 <span class="req">*</span></label>
-                <textarea id="f_issue" placeholder="如：底板刮花 / 不通电 / 蒸汽漏水 / 指示灯不亮……"></textarea>
+                <label>不合格原因 <span class="req">*</span><span style="font-weight:400;color:var(--ink3)">（已选原因）</span></label>
+                <div class="reason-sum" id="reasonSum"></div>
+                <div class="reason-actions"><button type="button" class="btn btn-ghost btn-sm" onclick="openReason()">✏️ 修改原因</button></div>
               </div>
               <div class="field full">
                 <label>备注 <span style="font-weight:400;color:var(--ink3)">（选填）</span></label>
@@ -472,10 +482,19 @@
         </div>
 
         <div class="card">
+          <h2 class="section"><span class="dot"></span>不合格原因分布 <span style="color:var(--ink3);font-weight:400;font-size:.8rem">（按涉及笔数）</span></h2>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>不合格原因</th><th>涉及笔数</th><th>占不合格记录</th></tr></thead>
+            <tbody id="st_reason_tb"></tbody></table>
+            <div class="empty" id="st_reason_e" style="display:none">当前筛选范围内无不合格记录</div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-head"><h2 class="section" style="margin-bottom:0"><span class="dot"></span>筛选结果明细</h2><span style="font-size:.8rem;color:var(--ink3)" id="st_detail_n"></span></div>
           <div class="tbl-wrap" id="stDetailWrap">
             <table>
-              <thead><tr><th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>备注</th><th>补发状态</th></tr></thead>
+              <thead><tr><th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>不合格原因</th><th>备注</th><th>补发状态</th></tr></thead>
               <tbody id="st_detail_tb"></tbody>
             </table>
             <div class="empty" id="st_detail_e" style="display:none">无符合条件的记录</div>
@@ -543,6 +562,26 @@
   </div>
 </div>
 
+<!-- 不合格原因选择弹窗 -->
+<div class="mask" id="reasonMask">
+  <div class="modal">
+    <div class="modal-h"><h3>选择不合格原因（可多选）</h3><button class="x" onclick="closeReason()">✕</button></div>
+    <div class="modal-b">
+      <div class="info-strip">质检不合格，请勾选具体原因（<b>至少 1 项</b>），便于后续统计与追溯。</div>
+      <div class="reason-grid" id="reasonOpts"></div>
+      <div class="field" style="margin-top:16px">
+        <label>补充说明 <span style="font-weight:400;color:var(--ink3)">（选填）</span></label>
+        <textarea id="f_reason_extra" placeholder="补充细节，便于追溯（如：不通电且外壳破损）……"></textarea>
+      </div>
+      <p class="scan-tip" id="reasonMsg"></p>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeReason()">取消</button>
+        <button class="btn btn-pri" onclick="confirmReason()">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 扫码弹窗 -->
 <div class="mask" id="scanMask">
   <div class="modal scan-modal">
@@ -601,6 +640,37 @@ function inspBadge(i){
        : i === "不合格" ? '<span class="badge b-bad">不合格</span>'
        : '<span class="badge b-wait">待检</span>';
 }
+/* ================= 不合格原因选择 ================= */
+const REASON_OPTIONS = ["不通电","不加热","屏幕不显示","壳料破损脏污","发热板脏污或划痕"];
+let reasonSel = [];
+function renderReasonOptions(){
+  $("reasonOpts").innerHTML = REASON_OPTIONS.map(x =>
+    `<label class="reason-item"><input type="checkbox" class="rck" value="${esc(x)}" ${reasonSel.includes(x) ? "checked" : ""}> ${esc(x)}</label>`).join("");
+}
+function openReason(){
+  renderReasonOptions();
+  $("f_reason_extra").value = $("f_reason_extra").value || "";
+  $("reasonMsg").textContent = "";
+  $("reasonMask").classList.add("on");
+}
+function closeReason(){ $("reasonMask").classList.remove("on"); }
+function confirmReason(){
+  reasonSel = [...document.querySelectorAll("#reasonOpts .rck:checked")].map(c => c.value);
+  if (!reasonSel.length){ $("reasonMsg").textContent = "请至少勾选 1 项原因"; $("reasonMsg").className = "scan-tip err"; return; }
+  updateReasonSum();
+  closeReason();
+}
+function updateReasonSum(){
+  $("reasonSum").innerHTML = reasonSel.length
+    ? reasonSel.map(x => `<span class="chip">${esc(x)}</span>`).join("")
+    : '<span style="color:var(--red);font-size:.85rem">尚未选择原因</span>';
+}
+const issueText = r => {
+  const parts = [];
+  if ((r.reasons || []).length) parts.push(r.reasons.join("、"));
+  if (r.issue) parts.push(r.issue);
+  return parts.join("；") || "—";
+};
 
 /* ================= 标签页（侧边栏导航） ================= */
 const PAGE_META = {
@@ -642,7 +712,10 @@ function segSet(id, v){
   $(id).querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.v === v));
 }
 segInit("f_volt");
-segInit("f_insp", v => { $("issueWrap").style.display = v === "不合格" ? "" : "none"; });
+segInit("f_insp", v => {
+  $("issueWrap").style.display = v === "不合格" ? "" : "none";
+  if (v === "不合格") openReason();
+});
 
 $("btnSave").onclick = () => {
   const insp = segVal("f_insp");
@@ -657,7 +730,8 @@ $("btnSave").onclick = () => {
     qty: parseInt($("f_qty").value) || 0,
     supplier: $("f_supplier").value.trim(),
     insp,
-    issue: insp === "不合格" ? $("f_issue").value.trim() : "",
+    reasons: insp === "不合格" ? [...reasonSel] : [],
+    issue: insp === "不合格" ? $("f_reason_extra").value.trim() : "",
     express: $("f_express").value.trim(),
     note: $("f_note").value.trim()
   };
@@ -665,7 +739,7 @@ $("btnSave").onclick = () => {
   if (!rec.orderNo) return toast("请填写订单号");
   if (!rec.qty || rec.qty < 1) return toast("退货数量必须 ≥ 1");
   if (!rec.supplier) return toast("请填写供应商");
-  if (insp === "不合格" && !rec.issue) return toast("不合格必须填写问题描述");
+  if (insp === "不合格" && !reasonSel.length){ toast("请选择不合格原因"); openReason(); return; }
 
   if (editId){
     const i = returns.findIndex(r => r.id === editId);
@@ -684,7 +758,7 @@ function resetForm(){
   $("f_date").value = today();
   $("f_model").value = MODELS[0]; fillColors();
   segSet("f_volt","220V"); segSet("f_insp","待检");
-  $("issueWrap").style.display = "none"; $("f_qty").value = 1;
+  $("issueWrap").style.display = "none"; reasonSel = []; $("f_reason_extra").value = ""; $("f_qty").value = 1;
   $("f_supplier").value = DEFAULT_SUPPLIER; $("f_express").value = ""; $("f_note").value = "";
 }
 
@@ -694,7 +768,7 @@ function renderReturns(){
   const fi = $("q1_insp").value;
   const list = returns.filter(r =>
     (!fi || r.insp === fi) &&
-    (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express, r.note].join(" ").toLowerCase().includes(kw))
+    (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express, r.note, (r.reasons || []).join(" ")].join(" ").toLowerCase().includes(kw))
   );
   $("retCount").textContent = `（共 ${list.length} 笔 / ${sum(list, r => +r.qty)} 台）`;
   const wrap = $("retWrap"), cards = $("retCards");
@@ -714,7 +788,7 @@ function renderReturns(){
           <div><span>数量</span><i>${r.qty} 台</i></div>
           <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
           <div><span>补发进度</span><i>${st.done}/${r.qty} ${st.name}</i></div>
-          ${r.issue ? `<div class="full"><span>问题描述</span><i>${esc(r.issue)}</i></div>` : ""}
+          ${(r.issue || (r.reasons || []).length) ? `<div class="full"><span>问题描述</span><i>${esc(issueText(r))}</i></div>` : ""}
           ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
         </div>
         <div class="m-actions">
@@ -734,7 +808,7 @@ function renderReturns(){
         <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td>
         <td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
         <td>${inspBadge(r.insp)}</td>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.issue)}">${esc(r.issue) || "—"}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(issueText(r))}">${issueText(r)}</td>
         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
         <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${st.done}/${r.qty}</span></div></td>
         <td>
@@ -753,9 +827,11 @@ function editRet(id){
   $("f_date").value = r.date; $("f_order").value = r.orderNo || ""; $("f_express").value = r.express || ""; $("f_model").value = r.model; fillColors(r.color);
   segSet("f_volt", r.volt); $("f_plug").value = r.plug; $("f_qty").value = r.qty;
   $("f_supplier").value = r.supplier; segSet("f_insp", r.insp);
+  reasonSel = r.insp === "不合格" ? (r.reasons || []) : [];
+  $("f_reason_extra").value = r.insp === "不合格" ? (r.issue || "") : "";
   $("issueWrap").style.display = r.insp === "不合格" ? "" : "none";
-  $("f_issue").value = r.issue || "";
   $("f_note").value = r.note || "";
+  updateReasonSum();
   window.scrollTo({top:0, behavior:"smooth"});
 }
 function delRet(id){
@@ -958,6 +1034,18 @@ function renderStats(){
     `<tr><td><b>${esc(c)}</b></td><td>${d.qty}</td><td>${[...d.models].join("、")}</td>
      <td>${total ? Math.round(d.qty/total*100) : 0}%</td></tr>`).join("");
 
+  /* 不合格原因分布 */
+  const byR = {}; let badCnt = 0;
+  list.forEach(r => {
+    if (r.insp !== "不合格") return;
+    badCnt++;
+    (r.reasons || []).forEach(x => byR[x] = (byR[x] || 0) + 1);
+  });
+  const rRows = Object.entries(byR).sort((a,b) => b[1] - a[1]);
+  $("st_reason_e").style.display = rRows.length ? "none" : "";
+  $("st_reason_tb").innerHTML = rRows.map(([x,n]) =>
+    `<tr><td><b>${esc(x)}</b></td><td>${n}</td><td>${badCnt ? Math.round(n/badCnt*100) : 0}%</td></tr>`).join("");
+
   /* 明细 */
   $("st_detail_n").textContent = `共 ${list.length} 笔`;
   const dw = $("stDetailWrap"), dc = $("stDetailCards"), de = $("st_detail_e");
@@ -977,6 +1065,7 @@ function renderStats(){
           <div><span>数量</span><i>${r.qty} 台</i></div>
           <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
           <div><span>补发状态</span><i><span class="badge ${st.cls}">${st.name}</span></i></div>
+          ${(r.issue || (r.reasons || []).length) ? `<div class="full"><span>问题描述</span><i>${esc(issueText(r))}</i></div>` : ""}
           ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
         </div>
       </div>`;
@@ -989,6 +1078,7 @@ function renderStats(){
       return `<tr><td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
         <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td><td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
         <td>${inspBadge(r.insp)}</td>
+        <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis" title="${esc(issueText(r))}">${issueText(r)}</td>
         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
         <td><span class="badge ${st.cls}">${st.name}</span></td></tr>`;
     }).join("");
@@ -1018,10 +1108,10 @@ function dlCSV(filename, head, rows){
 }
 function exportCSV(){
   if (!returns.length) return toast("没有数据可导出");
-  const head = ["退货日期","订单号","快递单号","型号","颜色","电压","插头规格","退货数量","供应商","检验情况","问题描述","备注","已补数量","未补数量","补发状态"];
+  const head = ["退货日期","订单号","快递单号","型号","颜色","电压","插头规格","退货数量","供应商","检验情况","不合格原因","问题描述","备注","已补数量","未补数量","补发状态"];
   const rows = returns.map(r => {
     const st = repStatus(r);
-    return [r.date, r.orderNo || "", r.express || "", r.model, r.color, r.volt, r.plug, r.qty, r.supplier, r.insp, r.issue || "", r.note || "", st.done, st.left, st.name];
+    return [r.date, r.orderNo || "", r.express || "", r.model, r.color, r.volt, r.plug, r.qty, r.supplier, r.insp, (r.reasons || []).join("、"), r.issue || "", r.note || "", st.done, st.left, st.name];
   });
   dlCSV(`熨斗退货台账_${today()}.csv`, head, rows);
   toast("退货 CSV 已导出（可用 Excel/WPS 打开）");
@@ -1068,9 +1158,9 @@ function toast(msg){
 function seedDemo(){
   if (returns.length && !confirm("载入示例数据会追加到现有数据，继续？")) return;
   const demo = [
-    {date:"2026-08-02", orderNo:"DD202608001", model:"M2", color:"红", volt:"220V", plug:"国标", qty:5, supplier:"东莞", insp:"不合格", issue:"底板刮花、蒸汽漏水", note:"客户要求退换新机"},
+    {date:"2026-08-02", orderNo:"DD202608001", model:"M2", color:"红", volt:"220V", plug:"国标", qty:5, supplier:"东莞", insp:"不合格", reasons:["发热板脏污或划痕","壳料破损脏污"], issue:"底板刮花、蒸汽漏水", note:"客户要求退换新机"},
     {date:"2026-08-05", orderNo:"DD202608002", model:"L2", color:"紫", volt:"110V", plug:"美规", qty:3, supplier:"东莞", insp:"合格", issue:"", note:"仅退货退款，无需补发"},
-    {date:"2026-08-08", orderNo:"DD202608003", model:"L3", color:"绿", volt:"220V", plug:"欧规", qty:2, supplier:"东莞", insp:"不合格", issue:"不通电"},
+    {date:"2026-08-08", orderNo:"DD202608003", model:"L3", color:"绿", volt:"220V", plug:"欧规", qty:2, supplier:"东莞", insp:"不合格", reasons:["不通电"], issue:"不通电"},
     {date:"2026-08-12", orderNo:"DD202608004", model:"L", color:"红", volt:"220V", plug:"国标", qty:4, supplier:"东莞", insp:"待检", issue:""},
     {date:"2026-08-15", orderNo:"DD202608005", model:"M2", color:"灰", volt:"110V", plug:"美规", qty:6, supplier:"东莞", insp:"不合格", issue:"指示灯不亮"},
     {date:"2026-08-18", orderNo:"DD202608006", model:"L", color:"绿", volt:"220V", plug:"英规", qty:2, supplier:"东莞", insp:"合格", issue:""}
