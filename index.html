@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>熨斗退货台账管理系统</title>
 <style>
   :root{
@@ -18,7 +18,9 @@
     --r:14px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  html{font-size:15px}
+  html{font-size:15px;scroll-behavior:smooth}
+  button,.btn,.seg button,.side-nav button,.bottom-nav button,input,select,textarea{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  @media(prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
   body{font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
   /* ===== 布局 ===== */
@@ -214,6 +216,37 @@
     .stat-grid{grid-template-columns:1fr}
     .filter-bar .field{flex:1 1 100%}
   }
+  /* ===== 移动端：卡片列表视图 ===== */
+  .m-list{display:none}
+  @media(max-width:760px){
+    .m-list{display:flex;flex-direction:column;gap:11px}
+    .m-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 14px;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+    .m-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .m-t{font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.45;min-width:0}
+    .m-t b{color:var(--blue);font-size:1.06rem}
+    .m-t span{color:var(--ink2);font-weight:500}
+    .m-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+    .m-grid>div{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line2);font-size:.84rem;min-width:0}
+    .m-grid>div span{color:var(--ink3);flex-shrink:0}
+    .m-grid>div i{font-style:normal;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .m-grid>div.full{grid-column:1/-1}
+    .m-grid>div.full i{white-space:normal;text-align:left;word-break:break-all}
+    .m-actions{display:flex;gap:9px;margin-top:12px}
+    .m-actions .btn{flex:1;justify-content:center;min-height:42px}
+  }
+  /* ===== 移动端：底部抽屉弹窗 / 顶栏紧凑 ===== */
+  @media(max-width:760px){
+    .mask{padding:0;align-items:flex-end}
+    .modal{max-width:100vw;border-radius:18px 18px 0 0;max-height:92vh;animation:sheetUp .28s ease}
+    @keyframes sheetUp{from{transform:translateY(46px);opacity:.35}to{transform:none;opacity:1}}
+    .modal-h{padding:15px 16px}
+    .modal-b{padding:16px 16px calc(22px + env(safe-area-inset-bottom,0px))}
+    .tb-act{gap:6px}
+    .tb-act .btn-sm{padding:8px 9px;font-size:.76rem;min-height:38px}
+  }
+  @media(max-width:520px){
+    .form-grid{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
@@ -347,7 +380,7 @@
               <select id="q1_insp" onchange="renderReturns()"><option value="">全部</option><option>待检</option><option>合格</option><option>不合格</option></select>
             </div>
           </div>
-          <div class="tbl-wrap">
+          <div class="tbl-wrap" id="retWrap">
             <table>
               <thead><tr>
                 <th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>问题描述</th><th>补发进度</th><th>操作</th>
@@ -356,6 +389,7 @@
             </table>
             <div class="empty" id="retEmpty" style="display:none"><span class="ico">📦</span>暂无退货记录，请在上方登记</div>
           </div>
+          <div class="m-list" id="retCards" style="display:none"></div>
         </div>
       </section>
 
@@ -374,7 +408,7 @@
           <div class="card-head">
             <h2 class="section" style="margin-bottom:0"><span class="dot"></span>补发进度总览</h2>
           </div>
-          <div class="tbl-wrap">
+          <div class="tbl-wrap" id="trkWrap">
             <table>
               <thead><tr>
                 <th>退货日期</th><th>订单号</th><th>型号</th><th>颜色</th><th>供应商</th><th>应补</th><th>已补</th><th>未补</th><th>补发进度</th><th>状态</th><th>操作</th>
@@ -383,6 +417,7 @@
             </table>
             <div class="empty" id="trkEmpty" style="display:none"><span class="ico">🚚</span>暂无需要跟踪的退货记录</div>
           </div>
+          <div class="m-list" id="trkCards" style="display:none"></div>
         </div>
       </section>
 
@@ -434,13 +469,14 @@
 
         <div class="card">
           <div class="card-head"><h2 class="section" style="margin-bottom:0"><span class="dot"></span>筛选结果明细</h2><span style="font-size:.8rem;color:var(--ink3)" id="st_detail_n"></span></div>
-          <div class="tbl-wrap">
+          <div class="tbl-wrap" id="stDetailWrap">
             <table>
               <thead><tr><th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>补发状态</th></tr></thead>
               <tbody id="st_detail_tb"></tbody>
             </table>
             <div class="empty" id="st_detail_e" style="display:none">无符合条件的记录</div>
           </div>
+          <div class="m-list" id="stDetailCards" style="display:none"></div>
         </div>
       </section>
 
@@ -481,7 +517,7 @@
   <div class="modal">
     <div class="modal-h"><h3>云端同步设置</h3><button class="x" onclick="closeCloud()">✕</button></div>
     <div class="modal-b">
-      <div class="info-strip" id="cloudInfo">启用后，数据将保存在你的 GitHub 仓库（跨设备实时同步）。Token 仅存于本机浏览器。</div>
+      <div class="info-strip" id="cloudInfo">启用后数据保存在你的 GitHub 仓库（跨设备同步）。Token 需有 repo 权限且仓库须已存在；Token 仅存于本机浏览器。</div>
       <div class="field" style="margin-bottom:12px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="c_enabled" style="width:18px;height:18px"> 启用云端同步（跨设备）
@@ -494,6 +530,7 @@
       </div>
       <p class="scan-tip" id="cloudMsg" style="margin-top:12px"></p>
       <div class="form-actions">
+        <button class="btn btn-ghost" onclick="clearCloudCfg()">清除配置</button>
         <button class="btn btn-ghost" onclick="closeCloud()">关闭</button>
         <button class="btn btn-green" onclick="cloudSyncNow()">立即同步</button>
         <button class="btn btn-pri" onclick="saveCloudSettingsUI()">保存并连接</button>
@@ -540,6 +577,7 @@ let editId  = null;
 let repTarget = null;
 
 const $ = id => document.getElementById(id);
+const isMobile = () => window.matchMedia("(max-width:760px)").matches;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const today = () => new Date().toISOString().slice(0,10);
 const saveAll = () => { localStorage.setItem(LS_RET, JSON.stringify(returns)); localStorage.setItem(LS_REP, JSON.stringify(reps)); schedulePush(); };
@@ -653,22 +691,50 @@ function renderReturns(){
     (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express].join(" ").toLowerCase().includes(kw))
   );
   $("retCount").textContent = `（共 ${list.length} 笔 / ${sum(list, r => +r.qty)} 台）`;
-  $("retEmpty").style.display = list.length ? "none" : "";
-  $("retTbody").innerHTML = list.map(r => {
-    const st = repStatus(r);
-    const pct = Math.min(100, Math.round(st.done / r.qty * 100));
-    return `<tr>
-      <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
-      <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td>
-      <td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
-      <td>${inspBadge(r.insp)}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.issue)}">${esc(r.issue) || "—"}</td>
-      <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${st.done}/${r.qty}</span></div></td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="editRet('${r.id}')">编辑</button>
-        <button class="btn btn-danger btn-sm" onclick="delRet('${r.id}')">删除</button>
-      </td></tr>`;
-  }).join("");
+  const wrap = $("retWrap"), cards = $("retCards");
+  if (isMobile()){
+    wrap.style.display = "none"; cards.style.display = "flex";
+    cards.innerHTML = list.length ? list.map(r => {
+      const st = repStatus(r);
+      return `<div class="m-card">
+        <div class="m-card-h">
+          <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.color)} ${esc(r.volt)} ${esc(r.plug)}</span></div>
+          ${inspBadge(r.insp)}
+        </div>
+        <div class="m-grid">
+          <div><span>退货日期</span><i>${esc(r.date)}</i></div>
+          <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
+          <div><span>快递单号</span><i>${esc(r.express) || "—"}</i></div>
+          <div><span>数量</span><i>${r.qty} 台</i></div>
+          <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
+          <div><span>补发进度</span><i>${st.done}/${r.qty} ${st.name}</i></div>
+          ${r.issue ? `<div class="full"><span>问题描述</span><i>${esc(r.issue)}</i></div>` : ""}
+        </div>
+        <div class="m-actions">
+          <button class="btn btn-ghost" onclick="editRet('${r.id}')">✏️ 编辑</button>
+          <button class="btn btn-danger" onclick="delRet('${r.id}')">🗑 删除</button>
+        </div>
+      </div>`;
+    }).join("") : '<div class="empty" style="display:block"><span class="ico">📦</span>暂无退货记录，请在上方登记</div>';
+  } else {
+    wrap.style.display = ""; cards.style.display = "none";
+    $("retEmpty").style.display = list.length ? "none" : "";
+    $("retTbody").innerHTML = list.map(r => {
+      const st = repStatus(r);
+      const pct = Math.min(100, Math.round(st.done / r.qty * 100));
+      return `<tr>
+        <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
+        <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td>
+        <td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
+        <td>${inspBadge(r.insp)}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.issue)}">${esc(r.issue) || "—"}</td>
+        <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${st.done}/${r.qty}</span></div></td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="editRet('${r.id}')">编辑</button>
+          <button class="btn btn-danger btn-sm" onclick="delRet('${r.id}')">删除</button>
+        </td></tr>`;
+    }).join("");
+  }
   updateSideStats();
 }
 function editRet(id){
@@ -714,21 +780,49 @@ function renderTrack(){
     return (!fs || st.name === fs) && (!fsup || r.supplier === fsup) &&
       (!kw || (r.model + r.color + (r.orderNo || "")).toLowerCase().includes(kw));
   });
-  $("trkEmpty").style.display = list.length ? "none" : "";
-  $("trkTbody").innerHTML = list.map(r => {
-    const st = repStatus(r);
-    const pct = Math.min(100, Math.round(st.done / r.qty * 100));
-    return `<tr>
-      <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td><td>${esc(r.supplier)}</td>
-      <td><b>${r.qty}</b></td><td style="color:var(--green);font-weight:600">${st.done}</td>
-      <td style="color:${st.left>0?"var(--red)":"var(--ink3)"};font-weight:600">${st.left}</td>
-      <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${pct}%</span></div></td>
-      <td><span class="badge ${st.cls}">${st.name}</span></td>
-      <td>
-        ${st.left > 0 ? `<button class="btn btn-green btn-sm" onclick="openRep('${r.id}')">＋ 补发登记</button>` : ""}
-        <button class="btn btn-ghost btn-sm" onclick="openRep('${r.id}')">明细</button>
-      </td></tr>`;
-  }).join("");
+  const wrap = $("trkWrap"), cards = $("trkCards");
+  if (isMobile()){
+    wrap.style.display = "none"; cards.style.display = "flex";
+    cards.innerHTML = list.length ? list.map(r => {
+      const st = repStatus(r);
+      const pct = Math.min(100, Math.round(st.done / r.qty * 100));
+      return `<div class="m-card">
+        <div class="m-card-h">
+          <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.color)} · ${esc(r.supplier)}</span></div>
+          <span class="badge ${st.cls}">${st.name}</span>
+        </div>
+        <div class="m-grid">
+          <div><span>退货日期</span><i>${esc(r.date)}</i></div>
+          <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
+          <div><span>应补</span><i><b>${r.qty}</b> 台</i></div>
+          <div><span>已补</span><i style="color:var(--green);font-weight:600">${st.done}</i></div>
+          <div><span>未补</span><i style="color:${st.left>0?"var(--red)":"var(--ink3)"};font-weight:600">${st.left}</i></div>
+          <div><span>完成率</span><i>${pct}%</i></div>
+        </div>
+        <div class="m-actions">
+          ${st.left > 0 ? `<button class="btn btn-green" onclick="openRep('${r.id}')">＋ 补发登记</button>` : ""}
+          <button class="btn btn-ghost" onclick="openRep('${r.id}')">明细</button>
+        </div>
+      </div>`;
+    }).join("") : '<div class="empty" style="display:block"><span class="ico">🚚</span>暂无需要跟踪的退货记录</div>';
+  } else {
+    wrap.style.display = ""; cards.style.display = "none";
+    $("trkEmpty").style.display = list.length ? "none" : "";
+    $("trkTbody").innerHTML = list.map(r => {
+      const st = repStatus(r);
+      const pct = Math.min(100, Math.round(st.done / r.qty * 100));
+      return `<tr>
+        <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td><td>${esc(r.supplier)}</td>
+        <td><b>${r.qty}</b></td><td style="color:var(--green);font-weight:600">${st.done}</td>
+        <td style="color:${st.left>0?"var(--red)":"var(--ink3)"};font-weight:600">${st.left}</td>
+        <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${pct}%</span></div></td>
+        <td><span class="badge ${st.cls}">${st.name}</span></td>
+        <td>
+          ${st.left > 0 ? `<button class="btn btn-green btn-sm" onclick="openRep('${r.id}')">＋ 补发登记</button>` : ""}
+          <button class="btn btn-ghost btn-sm" onclick="openRep('${r.id}')">明细</button>
+        </td></tr>`;
+    }).join("");
+  }
   updateSideStats();
 }
 
@@ -849,13 +943,36 @@ function renderStats(){
 
   /* 明细 */
   $("st_detail_n").textContent = `共 ${list.length} 笔`;
-  $("st_detail_e").style.display = list.length ? "none" : "";
-  $("st_detail_tb").innerHTML = list.map(r => {
-    const st = repStatus(r);
-    return `<tr><td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
-      <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td><td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
-      <td>${inspBadge(r.insp)}</td><td><span class="badge ${st.cls}">${st.name}</span></td></tr>`;
-  }).join("");
+  const dw = $("stDetailWrap"), dc = $("stDetailCards"), de = $("st_detail_e");
+  if (isMobile()){
+    dw.style.display = "none"; dc.style.display = "flex";
+    dc.innerHTML = list.length ? list.map(r => {
+      const st = repStatus(r);
+      return `<div class="m-card">
+        <div class="m-card-h">
+          <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.color)} ${esc(r.volt)} ${esc(r.plug)}</span></div>
+          ${inspBadge(r.insp)}
+        </div>
+        <div class="m-grid">
+          <div><span>退货日期</span><i>${esc(r.date)}</i></div>
+          <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
+          <div><span>快递单号</span><i>${esc(r.express) || "—"}</i></div>
+          <div><span>数量</span><i>${r.qty} 台</i></div>
+          <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
+          <div><span>补发状态</span><i><span class="badge ${st.cls}">${st.name}</span></i></div>
+        </div>
+      </div>`;
+    }).join("") : '<div class="empty" style="display:block"><span class="ico">🔍</span>无符合条件的记录</div>';
+  } else {
+    dw.style.display = ""; dc.style.display = "none";
+    de.style.display = list.length ? "none" : "";
+    $("st_detail_tb").innerHTML = list.map(r => {
+      const st = repStatus(r);
+      return `<tr><td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
+        <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td><td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
+        <td>${inspBadge(r.insp)}</td><td><span class="badge ${st.cls}">${st.name}</span></td></tr>`;
+    }).join("");
+  }
   updateSideStats();
 }
 function resetStatFilter(){
@@ -1025,7 +1142,7 @@ function closeScanner(){
 
 /* ================= 云端同步（GitHub 仓库，跨设备） ================= */
 let cloudCfg = { enabled:false, token:"", owner:"1625804272", repo:"iron-returns", path:"data/returns.json", sha:null };
-let pushTimer = null;
+let pushTimer = null, pushRetry = 0;
 function loadCloudSettings(){
   try { const s = JSON.parse(localStorage.getItem("iron_cloud_v1")); if (s) cloudCfg = Object.assign(cloudCfg, s); } catch(e){}
 }
@@ -1033,9 +1150,22 @@ function saveCloudSettings(){ localStorage.setItem("iron_cloud_v1", JSON.stringi
 function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
 function b64dec(b64){ return decodeURIComponent(escape(atob(b64))); }
 function ghHeaders(){ const h = { "Accept":"application/vnd.github+json" }; if (cloudCfg.token) h["Authorization"] = "Bearer " + cloudCfg.token; return h; }
-function cloudApiUrl(){ return `https://api.github.com/repos/${cloudCfg.owner}/${cloudCfg.repo}/contents/${encodeURIComponent(cloudCfg.path)}`; }
-function cloudActive(){ return !!(cloudCfg.enabled && cloudCfg.token); }
+function cloudApiUrl(){
+  const p = cloudCfg.path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+  return `https://api.github.com/repos/${encodeURIComponent(cloudCfg.owner)}/${encodeURIComponent(cloudCfg.repo)}/contents/${p}`;
+}
+function cloudActive(){ return !!(cloudCfg.enabled && cloudCfg.token && cloudCfg.owner && cloudCfg.repo); }
 function updateCloudChip(state){ const el = $("cloudState"); if (!el) return; el.textContent = state || (cloudActive() ? "云端" : "本地"); }
+function cloudMsg(txt, err){ const el = $("cloudMsg"); if (!el) return; el.textContent = txt; el.className = "scan-tip" + (err ? " err" : ""); }
+function apiErr(e){
+  if (!e) return "未知错误";
+  const s = e.status;
+  if (s === 401) return "Token 无效或已过期（401）";
+  if (s === 403) return "Token 无权访问该仓库或触发限流（403）";
+  if (s === 404) return "仓库不存在或无访问权限，请检查 owner/repo 与 Token 权限（404）";
+  return e.message || String(e);
+}
+function persistLocal(){ localStorage.setItem(LS_RET, JSON.stringify(returns)); localStorage.setItem(LS_REP, JSON.stringify(reps)); }
 function schedulePush(){
   if (!cloudActive()) return;
   clearTimeout(pushTimer);
@@ -1045,35 +1175,69 @@ function mergeCloud(cloud){
   const m = new Map(); (cloud.returns||[]).forEach(r => m.set(r.id, r)); returns.forEach(r => m.set(r.id, r)); returns = [...m.values()];
   const m2 = new Map(); (cloud.reps||[]).forEach(r => m2.set(r.id, r)); reps.forEach(r => m2.set(r.id, r)); reps = [...m2.values()];
 }
+/* 验证 Token：成功返回 {ok:true, login}；失败返回 {ok:false, error} */
+function verifyToken(token){
+  return fetch("https://api.github.com/user", { headers:{ "Accept":"application/vnd.github+json", "Authorization":"Bearer " + token } })
+    .then(r => {
+      if (r.status === 401){ const e = new Error("401"); e.status = 401; throw e; }
+      if (!r.ok){ const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+      return r.json();
+    })
+    .then(u => ({ ok:true, login:u.login || "" }))
+    .catch(e => ({ ok:false, error:apiErr(e) }));
+}
+/* 拉取并合并云端数据：成功返回 {ok:true, exists}；失败返回 {ok:false, error} */
 function pullCloud(){
-  if (!cloudActive()) return Promise.resolve();
+  if (!cloudActive()) return Promise.resolve({ ok:true, skipped:true });
   updateCloudChip("同步中");
   return fetch(cloudApiUrl(), { headers: ghHeaders() })
-    .then(r => { if (r.status === 404) return null; if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(j => {
-      if (!j){ cloudCfg.sha = null; saveCloudSettings(); return pushCloud(); }
-      try { mergeCloud(JSON.parse(b64dec(j.content))); } catch(e){ throw new Error("数据解析失败"); }
-      cloudCfg.sha = j.sha; saveCloudSettings(); updateCloudChip("已同步"); return true;
+    .then(r => {
+      if (r.status === 404) return null;                     // 云端文件尚不存在 → 首次推送时创建
+      if (!r.ok){ const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+      return r.json();
     })
-    .catch(e => { updateCloudChip("拉取失败"); console.warn("pullCloud:", e); });
+    .then(j => {
+      if (!j){ cloudCfg.sha = null; saveCloudSettings(); return { ok:true, exists:false }; }
+      try { mergeCloud(JSON.parse(b64dec(j.content))); }
+      catch(e){ const x = new Error("云端数据解析失败，可能是格式损坏"); x.status = 0; throw x; }
+      cloudCfg.sha = j.sha; saveCloudSettings();
+      persistLocal();                                        // 合并结果立即落到本地，刷新页面不丢
+      updateCloudChip("已同步");
+      return { ok:true, exists:true };
+    })
+    .catch(e => { updateCloudChip("拉取失败"); console.warn("pullCloud:", e); return { ok:false, error:apiErr(e) }; });
 }
+/* 推送本地数据到云端：成功返回 {ok:true}；失败返回 {ok:false, error}（失败自动重试 3 次） */
 function pushCloud(){
-  if (!cloudActive()) return Promise.resolve();
+  if (!cloudActive()) return Promise.resolve({ ok:true, skipped:true });
+  updateCloudChip("同步中");
   const payload = { app:"iron-returns", version:1, savedAt:new Date().toISOString(), returns, reps };
   const content = b64enc(JSON.stringify(payload));
   const headers = ghHeaders(); headers["Content-Type"] = "application/json";
   const body = { message:"sync returns data", content, committer:{ name:"iron-app", email:"app@local" } };
   return fetch(cloudApiUrl(), { headers })
-    .then(r => r.status === 404 ? null : (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+    .then(r => r.status === 404 ? null : (r.ok ? r.json() : Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status }))))
     .then(j => { if (j) body.sha = j.sha; return fetch(cloudApiUrl(), { method:"PUT", headers, body: JSON.stringify(body) }); })
-    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(j => { cloudCfg.sha = (j.content && j.content.sha) || cloudCfg.sha; saveCloudSettings(); updateCloudChip("已同步"); })
-    .catch(e => { updateCloudChip("同步失败"); console.warn("pushCloud:", e); });
+    .then(r => { if (!r.ok) return Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status })); return r.json(); })
+    .then(j => {
+      cloudCfg.sha = (j.content && j.content.sha) || cloudCfg.sha; saveCloudSettings();
+      pushRetry = 0; updateCloudChip("已同步"); return { ok:true };
+    })
+    .catch(e => {
+      console.warn("pushCloud:", e);
+      if (cloudActive() && pushRetry < 3){ pushRetry++; updateCloudChip("同步失败·自动重试中"); pushTimer = setTimeout(() => pushCloud(), 15000); }
+      else { pushRetry = 0; updateCloudChip("同步失败"); }
+      return { ok:false, error:apiErr(e) };
+    });
 }
 function initCloud(){
   loadCloudSettings();
   if (cloudActive()){
-    pullCloud().finally(() => { renderReturns(); refreshSuppliers(); updateSideStats(); });
+    pullCloud().then(res => {
+      if (res.ok && !res.exists) return pushCloud();          // 首次：创建云端文件
+      if (!res.ok) updateCloudChip("拉取失败");
+      return res;
+    }).finally(() => { renderReturns(); refreshSuppliers(); updateSideStats(); });
   } else {
     updateCloudChip("本地"); renderReturns(); refreshSuppliers(); updateSideStats();
   }
@@ -1084,33 +1248,78 @@ function openCloud(){
   $("c_token").value = cloudCfg.token || "";
   $("c_repo").value = cloudCfg.owner + "/" + cloudCfg.repo;
   $("c_path").value = cloudCfg.path;
-  $("cloudMsg").textContent = "";
+  cloudMsg("");
   $("cloudMask").classList.add("on");
 }
 function closeCloud(){ $("cloudMask").classList.remove("on"); }
-function saveCloudSettingsUI(){
+function clearCloudCfg(){
+  if (!confirm("停用云端同步并清除本机保存的 Token 配置？\n本地数据不会删除，云端数据保留在仓库中。")) return;
+  cloudCfg = { enabled:false, token:"", owner:"1625804272", repo:"iron-returns", path:"data/returns.json", sha:null };
+  saveCloudSettings();
+  $("c_enabled").checked = false; $("c_token").value = ""; $("c_repo").value = "1625804272/iron-returns"; $("c_path").value = "data/returns.json";
+  updateCloudChip("本地"); cloudMsg("已停用云端同步，Token 已清除"); toast("云端配置已清除");
+}
+function readCloudForm(){
   const repo = $("c_repo").value.trim();
   const mm = repo.match(/^([^/]+)\/(.+)$/);
-  if (!mm){ $("cloudMsg").textContent = "仓库格式应为 owner/repo"; $("cloudMsg").className = "scan-tip err"; return; }
-  if (!$("c_token").value.trim()){ $("cloudMsg").textContent = "请填写 GitHub Token"; $("cloudMsg").className = "scan-tip err"; return; }
-  cloudCfg.enabled = $("c_enabled").checked;
-  cloudCfg.token = $("c_token").value.trim();
-  cloudCfg.owner = mm[1]; cloudCfg.repo = mm[2];
-  cloudCfg.path = $("c_path").value.trim() || "data/returns.json";
+  const token = $("c_token").value.trim();
+  if (!mm) return { ok:false, err:"仓库格式应为 owner/repo（如 1625804272/iron-returns）" };
+  if (!token) return { ok:false, err:"请填写 GitHub Token" };
+  return { ok:true, enabled:$("c_enabled").checked, token, owner:mm[1].trim(), repo:mm[2].trim(), path:$("c_path").value.trim() || "data/returns.json" };
+}
+function saveCloudSettingsUI(){
+  const f = readCloudForm();
+  if (!f.ok){ cloudMsg(f.err, true); return; }
+  cloudCfg.enabled = f.enabled; cloudCfg.token = f.token; cloudCfg.owner = f.owner; cloudCfg.repo = f.repo; cloudCfg.path = f.path;
   saveCloudSettings();
-  $("cloudMsg").textContent = "已保存，正在连接……"; $("cloudMsg").className = "scan-tip";
-  if (cloudCfg.enabled){
-    pullCloud().then(() => { renderReturns(); refreshSuppliers(); updateSideStats();
-      $("cloudMsg").textContent = "连接成功，数据已与云端合并"; $("cloudMsg").className = "scan-tip"; });
-  } else { updateCloudChip("本地"); $("cloudMsg").textContent = "已保存（未启用同步）"; }
-  toast("云端设置已保存");
+  if (!f.enabled){ updateCloudChip("本地"); cloudMsg("已保存（未启用同步，勾选启用后再保存即可连接）"); toast("云端设置已保存"); return; }
+  cloudMsg("正在验证 Token 并连接……");
+  verifyToken(f.token).then(vr => {
+    if (!vr.ok){ cloudMsg("Token 验证失败：" + vr.error, true); updateCloudChip("验证失败"); return; }
+    pullCloud().then(pr => {
+      if (!pr.ok){ cloudMsg("连接失败：" + pr.error, true); updateCloudChip("拉取失败"); return; }
+      pushCloud().then(ps => {
+        if (!ps.ok){ cloudMsg("保存成功，但推送失败：" + ps.error, true); updateCloudChip("同步失败"); return; }
+        renderReturns(); refreshSuppliers(); updateSideStats();
+        cloudMsg("连接成功 ✅ GitHub 账号 " + vr.login + "，数据已与云端合并");
+        toast("云端同步已开启");
+      });
+    });
+  });
 }
 function cloudSyncNow(){
-  if (!cloudActive()){ $("cloudMsg").textContent = "请先启用并填写 Token 与仓库"; $("cloudMsg").className = "scan-tip err"; return; }
-  $("cloudMsg").textContent = "同步中……"; $("cloudMsg").className = "scan-tip";
-  pullCloud().then(() => { pushCloud().then(() => { renderReturns(); refreshSuppliers(); updateSideStats();
-    $("cloudMsg").textContent = "同步完成"; $("cloudMsg").className = "scan-tip"; }); });
+  const f = readCloudForm();
+  if (!f.ok){ cloudMsg(f.err, true); return; }
+  if (!f.enabled){ cloudMsg("请先勾选「启用云端同步」再执行同步", true); return; }
+  cloudCfg.enabled = true; cloudCfg.token = f.token; cloudCfg.owner = f.owner; cloudCfg.repo = f.repo; cloudCfg.path = f.path;
+  saveCloudSettings();
+  cloudMsg("正在验证 Token……");
+  verifyToken(f.token).then(vr => {
+    if (!vr.ok){ cloudMsg("Token 验证失败：" + vr.error, true); updateCloudChip("验证失败"); return; }
+    cloudMsg("正在同步（拉取 → 合并 → 推送）……");
+    pullCloud().then(pr => {
+      if (!pr.ok){ cloudMsg("拉取失败：" + pr.error, true); updateCloudChip("拉取失败"); return; }
+      pushCloud().then(ps => {
+        if (!ps.ok){ cloudMsg("推送失败：" + ps.error, true); updateCloudChip("同步失败"); return; }
+        renderReturns(); refreshSuppliers(); updateSideStats();
+        cloudMsg("同步完成 ✅ " + vr.login + "，本地 ↔ 云端数据一致");
+        updateCloudChip("已同步"); toast("同步完成");
+      });
+    });
+  });
 }
+
+/* ================= 响应式：旋转/尺寸变化自动重绘 ================= */
+let _rsTm = null;
+window.addEventListener("resize", () => {
+  clearTimeout(_rsTm);
+  _rsTm = setTimeout(() => {
+    const v = document.querySelector(".view.on");
+    if (v && v.id === "v1") renderReturns();
+    else if (v && v.id === "v2") renderTrack();
+    else if (v && v.id === "v3") renderStats();
+  }, 150);
+});
 
 /* ================= 启动 ================= */
 initForm(); initCloud();
