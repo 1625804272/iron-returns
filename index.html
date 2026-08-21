@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>熨斗退货台账管理系统</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --line:#e9ecf3; --line2:#f1f4f9;
+    --ink:#1a2233; --ink2:#5a6478; --ink3:#95a0b4;
+    --blue:#2563eb; --blue-d:#1d4ed8; --blue-bg:#eef3ff;
+    --red:#e23b3b; --red-bg:#fdf0f0;
+    --green:#15a34a; --green-bg:#eefaf1;
+    --amber:#d97706; --amber-bg:#fdf6ec;
+    --indigo:#4f46e5;
+    --side-bg:#11192e; --side-bg2:#0c1322; --side-ink:#aab4c8; --side-on:#ffffff;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px -6px rgba(16,24,40,.10);
+    --r:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{font-size:15px}
+  body{font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  /* ===== 布局 ===== */
+  .app{display:flex;min-height:100vh}
+  .side{width:248px;background:linear-gradient(180deg,var(--side-bg),var(--side-bg2));color:var(--side-ink);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0}
+  .brand{display:flex;align-items:center;gap:13px;padding:22px 22px 18px}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#6366f1);
+    display:flex;align-items:center;justify-content:center;font-size:21px;box-shadow:0 6px 16px rgba(59,130,246,.4)}
+  .brand h1{font-size:1.02rem;font-weight:700;color:#fff;letter-spacing:.3px;line-height:1.3}
+  .brand p{font-size:.7rem;color:#7d8aa3;margin-top:3px}
+  .side-nav{display:flex;flex-direction:column;gap:4px;padding:8px 14px}
+  .side-nav button{display:flex;align-items:center;gap:13px;border:none;background:transparent;color:var(--side-ink);
+    padding:13px 16px;border-radius:11px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:.16s}
+  .side-nav button .ic{width:20px;text-align:center;font-size:1.05rem;filter:grayscale(.2)}
+  .side-nav button:hover{background:rgba(255,255,255,.06);color:#e7ecf5}
+  .side-nav button.on{background:linear-gradient(90deg,rgba(59,130,246,.22),rgba(99,102,241,.10));color:#fff;
+    box-shadow:inset 3px 0 0 #3b82f6}
+  .side-foot{margin-top:auto;padding:18px 22px;border-top:1px solid rgba(255,255,255,.07)}
+  .side-foot .ft{font-size:.72rem;color:#7d8aa3;margin-bottom:10px}
+  .side-mini{display:flex;gap:10px}
+  .side-mini div{flex:1;background:rgba(255,255,255,.05);border-radius:10px;padding:10px 12px}
+  .side-mini .n{font-size:1.2rem;font-weight:800;color:#fff}
+  .side-mini .l{font-size:.66rem;color:#8b97af;margin-top:2px}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+    padding:22px 30px 10px}
+  .topbar h2{font-size:1.28rem;font-weight:800;letter-spacing:.3px}
+  .topbar .crumb{font-size:.78rem;color:var(--ink3);margin-top:3px}
+  .topbar .tb-act{display:flex;gap:8px}
+  .content{padding:8px 30px 50px;flex:1}
+
+  .view{display:none}
+  .view.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ===== 卡片 ===== */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+    padding:20px 22px;margin-bottom:18px}
+  .card-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .card h2.section{font-size:1.02rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+  .card h2.section .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 4px var(--blue-bg)}
+
+  /* ===== 表单 ===== */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:15px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:.8rem;font-weight:600;color:var(--ink2)}
+  .field label .req{color:var(--red)}
+  .field input,.field select,.field textarea{padding:10px 13px;border:1px solid var(--line);border-radius:10px;
+    font-size:.9rem;font-family:inherit;color:var(--ink);background:#fcfdff;transition:.16s;width:100%}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--blue);background:#fff;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .field textarea{resize:vertical;min-height:62px}
+  .field.full{grid-column:1/-1}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;padding:10px 4px;border:1px solid var(--line);background:#fcfdff;border-radius:10px;font-size:.88rem;
+    cursor:pointer;color:var(--ink2);font-family:inherit;transition:.16s}
+  .seg button.on{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);font-weight:600}
+
+  .btn{border:none;border-radius:10px;padding:10px 20px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;
+    transition:.16s;display:inline-flex;align-items:center;gap:6px}
+  .btn-pri{background:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.28)}
+  .btn-pri:hover{background:var(--blue-d)}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink2)}
+  .btn-ghost:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+  .btn-sm{padding:6px 13px;font-size:.8rem;border-radius:8px}
+  .btn-danger{background:var(--red-bg);color:var(--red)}
+  .btn-danger:hover{background:#fbe2e2}
+  .btn-green{background:var(--green-bg);color:var(--green)}
+  .btn-green:hover{background:#daf5e1}
+  .form-actions{margin-top:18px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+
+  /* ===== 表格 ===== */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:#fff}
+  table{width:100%;border-collapse:collapse;font-size:.87rem;background:#fff}
+  thead th{background:#f8fafc;color:var(--ink2);font-weight:600;font-size:.78rem;padding:12px 13px;text-align:left;
+    white-space:nowrap;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1}
+  tbody td{padding:11px 13px;border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle}
+  tbody tr:hover{background:#f7faff}
+  tbody tr:nth-child(even){background:#fcfdff}
+  tbody tr:nth-child(even):hover{background:#f4f8ff}
+  tbody tr:last-child td{border-bottom:none}
+  .empty{padding:46px 0;text-align:center;color:var(--ink3);font-size:.9rem}
+  .empty .ico{font-size:36px;display:block;margin-bottom:10px;opacity:.45}
+
+  .badge{display:inline-flex;align-items:center;padding:3px 11px;border-radius:999px;font-size:.76rem;font-weight:600}
+  .b-wait{background:var(--amber-bg);color:var(--amber)}
+  .b-ok{background:var(--green-bg);color:var(--green)}
+  .b-bad{background:var(--red-bg);color:var(--red)}
+  .b-part{background:#eef0ff;color:var(--indigo)}
+  .b-gray{background:#f1f5f9;color:#64748b}
+
+  .prog{display:flex;align-items:center;gap:9px;min-width:118px}
+  .prog-bar{flex:1;height:7px;background:#edf1f7;border-radius:99px;overflow:hidden}
+  .prog-bar i{display:block;height:100%;background:linear-gradient(90deg,#2563eb,#6366f1);border-radius:99px;transition:.4s}
+  .prog span{font-size:.78rem;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+  /* ===== 筛选条 ===== */
+  .filter-bar{display:flex;gap:13px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid var(--line);
+    border-radius:var(--r);box-shadow:var(--shadow);padding:17px 20px;margin-bottom:18px}
+  .filter-bar .field{min-width:138px}
+  .filter-bar .grow{flex:1}
+
+  /* ===== 统计卡片 ===== */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+    padding:18px 20px;position:relative;overflow:hidden;display:flex;align-items:center;gap:15px}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,var(--blue))}
+  .stat .ic{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:21px;
+    background:var(--ci,var(--blue-bg));flex-shrink:0}
+  .stat .meta{display:flex;flex-direction:column}
+  .stat .lbl{font-size:.8rem;color:var(--ink2);font-weight:600}
+  .stat .num{font-size:1.85rem;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--c,var(--ink))}
+  .stat .sub{font-size:.74rem;color:var(--ink3);margin-top:3px}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:920px){.two-col{grid-template-columns:1fr}}
+
+  /* ===== 弹窗 ===== */
+  .mask{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);display:none;align-items:center;
+    justify-content:center;z-index:60;padding:20px}
+  .mask.on{display:flex;animation:fade .18s ease}
+  .modal{background:#fff;border-radius:18px;width:100%;max-width:min(650px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;
+    box-shadow:0 24px 70px rgba(0,0,0,.3)}
+  .modal-h{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--line)}
+  .modal-h h3{font-size:1.08rem;font-weight:700}
+  .modal-h .x{border:none;background:#f1f5f9;width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:16px;color:var(--ink2)}
+  .modal-h .x:hover{background:#e2e8f0}
+  .modal-b{padding:22px 24px}
+  .info-strip{background:var(--blue-bg);border:1px solid #d6e3ff;border-radius:11px;padding:13px 17px;font-size:.86rem;
+    color:#1e40af;margin-bottom:18px;line-height:1.75}
+
+  /* ===== 扫码 ===== */
+  .scan-row{display:flex;gap:8px;align-items:stretch}
+  .scan-row input{flex:1}
+  .scan-btn{white-space:nowrap;flex-shrink:0}
+  .scan-modal{max-width:460px}
+  .scan-view{position:relative;width:100%;aspect-ratio:4/3;background:#0b1020;border-radius:12px;overflow:hidden}
+  .scan-view video{width:100%;height:100%;object-fit:cover;display:block}
+  .scan-line{position:absolute;left:8%;right:8%;top:50%;height:3px;background:linear-gradient(90deg,transparent,#22c55e,transparent);
+    box-shadow:0 0 12px 2px rgba(34,197,94,.6);animation:scanmove 2s ease-in-out infinite;border-radius:3px}
+  @keyframes scanmove{0%{top:14%}50%{top:86%}100%{top:14%}}
+  .scan-tip{font-size:.82rem;color:var(--ink2);text-align:center;margin:14px 2px 4px;line-height:1.6}
+  .scan-tip.err{color:var(--red)}
+
+  .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a2233;color:#fff;
+    padding:12px 24px;border-radius:11px;font-size:.88rem;opacity:0;pointer-events:none;transition:.25s;z-index:99;box-shadow:0 8px 26px rgba(0,0,0,.3)}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ===== 移动端底部导航 ===== */
+  .bottom-nav{display:none}
+  .scan-view.flash{box-shadow:0 0 0 4px #22c55e;transition:box-shadow .2s}
+
+  @media(max-width:820px){
+    .stat-grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(max-width:760px){
+    .app{flex-direction:column}
+    .side{display:none}
+    .main{min-width:0}
+    .topbar{padding:14px 16px 8px;align-items:flex-start}
+    .topbar h2{font-size:1.12rem}
+    .tb-act{flex-wrap:wrap}
+    .content{padding:8px 14px 92px}
+    .card{padding:16px 15px;margin-bottom:14px}
+    .form-grid{gap:12px}
+    .field input,.field select,.field textarea{padding:11px 12px;font-size:16px}
+    .seg button{padding:11px 4px}
+    .btn{padding:12px 18px;min-height:42px}
+    .btn-sm{padding:9px 14px;min-height:38px}
+    .filter-bar{padding:14px 15px;gap:11px}
+    .filter-bar .field{min-width:120px;flex:1 1 45%}
+    .two-col{gap:14px}
+    tbody td,thead th{font-size:.82rem;padding:10px 11px}
+    .topbar{flex-wrap:wrap}
+    .stat .meta{min-width:0}
+    .tbl-wrap{width:100%;max-width:100%}
+    .card-head{row-gap:10px}
+    .modal .form-actions{flex-wrap:wrap}
+    .modal .form-actions .btn{flex:1 1 auto;justify-content:center}
+    .side-mini{font-size:.9rem}
+    .bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;
+      background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(16,24,40,.10);
+      padding:6px 6px calc(6px + env(safe-area-inset-bottom, 0px));justify-content:space-around}
+    .bottom-nav button{border:none;background:none;flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+      padding:7px 4px;font-size:.7rem;font-weight:600;color:var(--ink2);font-family:inherit;cursor:pointer}
+    .bottom-nav .bi{font-size:1.4rem;line-height:1}
+    .bottom-nav button.on{color:var(--blue)}
+    .bottom-nav button.on .bi{transform:translateY(-1px)}
+  }
+  @media(max-width:380px){
+    .stat-grid{grid-template-columns:1fr}
+    .filter-bar .field{flex:1 1 100%}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ 侧边栏 ============ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">🔥</div>
+      <div>
+        <h1>熨斗退货台账</h1>
+        <p>退货 · 补发 · 统计</p>
+      </div>
+    </div>
+    <nav class="side-nav tabs">
+      <button class="nav-tab on" data-v="v1"><span class="ic">📝</span>退货登记</button>
+      <button class="nav-tab" data-v="v2"><span class="ic">🚚</span>补发跟踪</button>
+      <button class="nav-tab" data-v="v3"><span class="ic">📊</span>统计查询</button>
+    </nav>
+    <div class="side-foot">
+      <div class="ft">数据概览</div>
+      <div class="side-mini">
+        <div><div class="n" id="sm_total">0</div><div class="l">退货总台数</div></div>
+        <div><div class="n" id="sm_due" style="color:#fcb163">0</div><div class="l">待补发</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 主区 ============ -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h2 id="pageTitle">退货登记</h2>
+        <div class="crumb" id="pageCrumb">录入每笔退货熨斗的型号、颜色、电压与检验情况</div>
+      </div>
+      <div class="tb-act">
+        <button class="btn btn-ghost btn-sm" onclick="openCloud()">☁️ <span id="cloudState">本地</span></button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ 退货CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="backupJSON()">💾 备份</button>
+        <button class="btn btn-ghost btn-sm" onclick="$('importFile').click()">📂 恢复</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== 视图1：退货登记 ===== -->
+      <section id="v1" class="view on">
+        <div class="card">
+          <h2 class="section"><span class="dot"></span><span id="formTitle">新增退货登记</span></h2>
+          <form id="retForm" onsubmit="return false">
+            <div class="form-grid">
+              <div class="field">
+                <label>退货日期 <span class="req">*</span></label>
+                <input type="date" id="f_date" required>
+              </div>
+              <div class="field">
+                <label>订单号 <span class="req">*</span></label>
+                <input type="text" id="f_order" placeholder="如 DD202608001" required>
+              </div>
+              <div class="field">
+                <label>快递单号 <span style="font-weight:400;color:var(--ink3)">（选填·可扫码）</span></label>
+                <div class="scan-row">
+                  <input type="text" id="f_express" placeholder="面单条形码单号" inputmode="latin">
+                  <button type="button" class="btn btn-ghost btn-sm scan-btn" onclick="openScanner()">📷 扫码</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>型号 <span class="req">*</span></label>
+                <select id="f_model"></select>
+              </div>
+              <div class="field">
+                <label>颜色 <span class="req">*</span></label>
+                <select id="f_color"></select>
+              </div>
+              <div class="field">
+                <label>电压 <span class="req">*</span></label>
+                <div class="seg" id="f_volt">
+                  <button type="button" class="on" data-v="220V">220V</button>
+                  <button type="button" data-v="110V">110V</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>插头规格 <span class="req">*</span></label>
+                <select id="f_plug">
+                  <option>国标</option><option>美规</option><option>欧规</option><option>英规</option><option>澳规</option><option>其他</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>退货数量 <span class="req">*</span></label>
+                <input type="number" id="f_qty" min="1" step="1" value="1" required>
+              </div>
+              <div class="field">
+                <label>所属供应商 <span class="req">*</span></label>
+                <input type="text" id="f_supplier" list="supList" value="东莞" placeholder="输入或选择供应商" required>
+                <datalist id="supList"></datalist>
+              </div>
+              <div class="field">
+                <label>检验情况 <span class="req">*</span></label>
+                <div class="seg" id="f_insp">
+                  <button type="button" class="on" data-v="待检">待检</button>
+                  <button type="button" data-v="合格">合格</button>
+                  <button type="button" data-v="不合格">不合格</button>
+                </div>
+              </div>
+              <div class="field full" id="issueWrap" style="display:none">
+                <label>具体问题描述 <span class="req">*</span></label>
+                <textarea id="f_issue" placeholder="如：底板刮花 / 不通电 / 蒸汽漏水 / 指示灯不亮……"></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="btnReset">清空</button>
+              <button type="submit" class="btn btn-pri" id="btnSave">保存登记</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>退货记录 <span style="color:var(--ink3);font-weight:400;font-size:.82rem" id="retCount"></span></h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ 导出退货CSV</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportRepCSV()">⬇ 导出补发CSV</button>
+              <button class="btn btn-ghost btn-sm" onclick="seedDemo()">载入示例</button>
+              <button class="btn btn-danger btn-sm" onclick="clearAll()">清空全部</button>
+            </div>
+          </div>
+          <div class="filter-bar" style="box-shadow:none;padding:0 0 14px;border:none;margin-bottom:12px">
+            <div class="field" style="min-width:200px"><label>搜索</label><input id="q1" placeholder="型号 / 颜色 / 供应商 / 订单号 / 问题描述" oninput="renderReturns()"></div>
+            <div class="field" style="min-width:130px"><label>检验情况</label>
+              <select id="q1_insp" onchange="renderReturns()"><option value="">全部</option><option>待检</option><option>合格</option><option>不合格</option></select>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>问题描述</th><th>补发进度</th><th>操作</th>
+              </tr></thead>
+              <tbody id="retTbody"></tbody>
+            </table>
+            <div class="empty" id="retEmpty" style="display:none"><span class="ico">📦</span>暂无退货记录，请在上方登记</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 视图2：补发跟踪 ===== -->
+      <section id="v2" class="view">
+        <div class="filter-bar">
+          <div class="field" style="min-width:130px"><label>补发状态</label>
+            <select id="q2_status" onchange="renderTrack()">
+              <option value="">全部</option><option>待补发</option><option>部分补发</option><option>已补完</option>
+            </select>
+          </div>
+          <div class="field" style="min-width:130px"><label>供应商</label><select id="q2_sup" onchange="renderTrack()"><option value="">全部</option></select></div>
+          <div class="field grow"><label>搜索</label><input id="q2" placeholder="型号 / 颜色 / 订单号" oninput="renderTrack()"></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>补发进度总览</h2>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>退货日期</th><th>订单号</th><th>型号</th><th>颜色</th><th>供应商</th><th>应补</th><th>已补</th><th>未补</th><th>补发进度</th><th>状态</th><th>操作</th>
+              </tr></thead>
+              <tbody id="trkTbody"></tbody>
+            </table>
+            <div class="empty" id="trkEmpty" style="display:none"><span class="ico">🚚</span>暂无需要跟踪的退货记录</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 视图3：统计查询 ===== -->
+      <section id="v3" class="view">
+        <div class="filter-bar">
+          <div class="field"><label>开始日期</label><input type="date" id="s_from" onchange="renderStats()"></div>
+          <div class="field"><label>结束日期</label><input type="date" id="s_to" onchange="renderStats()"></div>
+          <div class="field"><label>型号</label><select id="s_model" onchange="renderStats()"><option value="">全部</option></select></div>
+          <div class="field"><label>颜色</label><select id="s_color" onchange="renderStats()"><option value="">全部</option></select></div>
+          <div class="field"><label>供应商</label><select id="s_sup" onchange="renderStats()"><option value="">全部</option></select></div>
+          <button class="btn btn-ghost" onclick="resetStatFilter()">重置条件</button>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat" style="--c:#2563eb;--ci:#eef3ff"><div class="ic">📦</div><div class="meta"><div class="lbl">退货总数量</div><div class="num" id="st_total">0</div><div class="sub" id="st_total_n">0 笔记录</div></div></div>
+          <div class="stat" style="--c:#e23b3b;--ci:#fdf0f0"><div class="ic">⚠️</div><div class="meta"><div class="lbl">检验不合格</div><div class="num" id="st_bad">0</div><div class="sub" id="st_bad_r">占比 0%</div></div></div>
+          <div class="stat" style="--c:#15a34a;--ci:#eefaf1"><div class="ic">✅</div><div class="meta"><div class="lbl">供应商已补发</div><div class="num" id="st_rep">0</div><div class="sub" id="st_rep_r">补发完成率 0%</div></div></div>
+          <div class="stat" style="--c:#d97706;--ci:#fdf6ec"><div class="ic">⏳</div><div class="meta"><div class="lbl">待补发未结清</div><div class="num" id="st_due">0</div><div class="sub" id="st_due_n">0 笔未结清</div></div></div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h2 class="section"><span class="dot"></span>各型号退货 / 补发汇总</h2>
+            <div class="tbl-wrap">
+              <table><thead><tr><th>型号</th><th>退货数量</th><th>已补发</th><th>未结清</th><th>不合格数</th></tr></thead>
+              <tbody id="st_model_tb"></tbody></table>
+              <div class="empty" id="st_model_e" style="display:none">暂无数据</div>
+            </div>
+          </div>
+          <div class="card">
+            <h2 class="section"><span class="dot"></span>各供应商退货 / 补发汇总</h2>
+            <div class="tbl-wrap">
+              <table><thead><tr><th>供应商</th><th>退货数量</th><th>已补发</th><th>未结清</th><th>补发完成率</th></tr></thead>
+              <tbody id="st_sup_tb"></tbody></table>
+              <div class="empty" id="st_sup_e" style="display:none">暂无数据</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="section"><span class="dot"></span>各颜色退货汇总</h2>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>颜色</th><th>退货数量</th><th>涉及型号</th><th>占比</th></tr></thead>
+            <tbody id="st_color_tb"></tbody></table>
+            <div class="empty" id="st_color_e" style="display:none">暂无数据</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2 class="section" style="margin-bottom:0"><span class="dot"></span>筛选结果明细</h2><span style="font-size:.8rem;color:var(--ink3)" id="st_detail_n"></span></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>补发状态</th></tr></thead>
+              <tbody id="st_detail_tb"></tbody>
+            </table>
+            <div class="empty" id="st_detail_e" style="display:none">无符合条件的记录</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- 移动端底部导航 -->
+<nav class="bottom-nav">
+  <button class="nav-tab on" data-v="v1"><span class="bi">📝</span><span>登记</span></button>
+  <button class="nav-tab" data-v="v2"><span class="bi">🚚</span><span>补发</span></button>
+  <button class="nav-tab" data-v="v3"><span class="bi">📊</span><span>统计</span></button>
+</nav>
+
+<!-- 补发登记弹窗 -->
+<div class="mask" id="repMask">
+  <div class="modal">
+    <div class="modal-h"><h3 id="repTitle">补发登记</h3><button class="x" onclick="closeRep()">✕</button></div>
+    <div class="modal-b">
+      <div class="info-strip" id="repInfo"></div>
+      <div class="form-grid">
+        <div class="field"><label>补发日期 <span class="req">*</span></label><input type="date" id="r_date"></div>
+        <div class="field"><label>补发数量 <span class="req">*</span></label><input type="number" id="r_qty" min="1" step="1" value="1"></div>
+        <div class="field"><label>补发型号</label><input type="text" id="r_model" placeholder="默认与退货型号一致"></div>
+        <div class="field"><label>备注</label><input type="text" id="r_note" placeholder="物流单号 / 说明（选填）"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeRep()">取消</button>
+        <button class="btn btn-pri" onclick="saveRep()">确认补发</button>
+      </div>
+      <div id="repHistWrap" style="margin-top:20px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 云端同步设置 -->
+<div class="mask" id="cloudMask">
+  <div class="modal">
+    <div class="modal-h"><h3>云端同步设置</h3><button class="x" onclick="closeCloud()">✕</button></div>
+    <div class="modal-b">
+      <div class="info-strip" id="cloudInfo">启用后，数据将保存在你的 GitHub 仓库（跨设备实时同步）。Token 仅存于本机浏览器。</div>
+      <div class="field" style="margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="c_enabled" style="width:18px;height:18px"> 启用云端同步（跨设备）
+        </label>
+      </div>
+      <div class="form-grid">
+        <div class="field full"><label>GitHub Token（需 repo 权限）</label><input type="password" id="c_token" placeholder="ghp_xxx 或个人访问令牌" autocomplete="off"></div>
+        <div class="field full"><label>仓库（owner/repo）</label><input type="text" id="c_repo" placeholder="1625804272/iron-returns"></div>
+        <div class="field full"><label>数据文件路径</label><input type="text" id="c_path" placeholder="data/returns.json"></div>
+      </div>
+      <p class="scan-tip" id="cloudMsg" style="margin-top:12px"></p>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeCloud()">关闭</button>
+        <button class="btn btn-green" onclick="cloudSyncNow()">立即同步</button>
+        <button class="btn btn-pri" onclick="saveCloudSettingsUI()">保存并连接</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 扫码弹窗 -->
+<div class="mask" id="scanMask">
+  <div class="modal scan-modal">
+    <div class="modal-h"><h3>扫码识别快递单号</h3><button class="x" onclick="closeScanner()">✕</button></div>
+    <div class="modal-b">
+      <div class="scan-view" id="scanView"><video id="scanVideo" playsinline></video><div class="scan-line"></div></div>
+      <p class="scan-tip" id="scanTip">正在打开摄像头……请将面单条形码对准取景框</p>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeScanner()">取消</button>
+        <button class="btn btn-green" onclick="captureFrame()">📸 拍照识别</button>
+        <button class="btn btn-pri" onclick="closeScanner();setTimeout(()=>$('f_express').focus(),50)">手动输入</button>
+      </div>
+      <canvas id="scanCanvas" style="display:none"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 型号-颜色映射 ================= */
+const MODEL_COLORS = {
+  "M2": ["红","绿","灰"],
+  "L":  ["绿","红"],
+  "L2": ["紫"],
+  "L3": ["绿"]
+};
+const MODELS = Object.keys(MODEL_COLORS);
+const DEFAULT_SUPPLIER = "东莞";
+
+/* ================= 数据层（localStorage） ================= */
+const LS_RET = "iron_returns_v1", LS_REP = "iron_replenish_v1";
+let returns = JSON.parse(localStorage.getItem(LS_RET) || "[]");
+let reps    = JSON.parse(localStorage.getItem(LS_REP) || "[]");
+let editId  = null;
+let repTarget = null;
+
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const today = () => new Date().toISOString().slice(0,10);
+const saveAll = () => { localStorage.setItem(LS_RET, JSON.stringify(returns)); localStorage.setItem(LS_REP, JSON.stringify(reps)); schedulePush(); };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sum = (arr, f) => arr.reduce((a,b) => a + f(b), 0);
+
+function repQtyOf(retId){ return sum(reps.filter(r => r.returnId === retId), r => +r.qty); }
+function repStatus(r){
+  const done = repQtyOf(r.id);
+  if (done <= 0) return {name:"待补发", cls:"b-wait", done, left:+r.qty};
+  if (done < +r.qty) return {name:"部分补发", cls:"b-part", done, left:+r.qty - done};
+  return {name:"已补完", cls:"b-ok", done, left:0};
+}
+function inspBadge(i){
+  return i === "合格" ? '<span class="badge b-ok">合格</span>'
+       : i === "不合格" ? '<span class="badge b-bad">不合格</span>'
+       : '<span class="badge b-wait">待检</span>';
+}
+
+/* ================= 标签页（侧边栏导航） ================= */
+const PAGE_META = {
+  v1:{t:"退货登记", c:"录入每笔退货熨斗的型号、颜色、电压与检验情况"},
+  v2:{t:"补发跟踪", c:"关联每笔退货，跟踪供应商补发进度与状态"},
+  v3:{t:"统计查询", c:"按型号 / 颜色 / 供应商 / 时间段汇总对账"}
+};
+document.querySelectorAll(".nav-tab").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".nav-tab").forEach(x => x.classList.toggle("on", x.dataset.v === b.dataset.v));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === b.dataset.v));
+  const m = PAGE_META[b.dataset.v];
+  $("pageTitle").textContent = m.t; $("pageCrumb").textContent = m.c;
+  if (b.dataset.v === "v2") renderTrack();
+  if (b.dataset.v === "v3") renderStats();
+  updateSideStats();
+});
+
+/* ================= 表单：级联下拉 ================= */
+function initForm(){
+  const ms = $("f_model");
+  ms.innerHTML = MODELS.map(m => `<option>${m}</option>`).join("");
+  ms.onchange = fillColors;
+  fillColors();
+  $("f_date").value = today();
+}
+function fillColors(selected){
+  const m = $("f_model").value;
+  const colors = MODEL_COLORS[m] || (selected ? [selected] : ["—"]);
+  $("f_color").innerHTML = colors.map(c => `<option ${c===selected?"selected":""}>${c}</option>`).join("");
+}
+function segInit(id, cb){
+  $(id).querySelectorAll("button").forEach(b => b.onclick = () => {
+    $(id).querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    if (cb) cb(b.dataset.v);
+  });
+}
+const segVal = id => $(id).querySelector("button.on").dataset.v;
+function segSet(id, v){
+  $(id).querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+}
+segInit("f_volt");
+segInit("f_insp", v => { $("issueWrap").style.display = v === "不合格" ? "" : "none"; });
+
+$("btnSave").onclick = () => {
+  const insp = segVal("f_insp");
+  const rec = {
+    id: editId || uid(),
+    date: $("f_date").value,
+    orderNo: $("f_order").value.trim(),
+    model: $("f_model").value,
+    color: $("f_color").value,
+    volt: segVal("f_volt"),
+    plug: $("f_plug").value,
+    qty: parseInt($("f_qty").value) || 0,
+    supplier: $("f_supplier").value.trim(),
+    insp,
+    issue: insp === "不合格" ? $("f_issue").value.trim() : "",
+    express: $("f_express").value.trim()
+  };
+  if (!rec.date) return toast("请选择退货日期");
+  if (!rec.orderNo) return toast("请填写订单号");
+  if (!rec.qty || rec.qty < 1) return toast("退货数量必须 ≥ 1");
+  if (!rec.supplier) return toast("请填写供应商");
+  if (insp === "不合格" && !rec.issue) return toast("不合格必须填写问题描述");
+
+  if (editId){
+    const i = returns.findIndex(r => r.id === editId);
+    returns[i] = rec; toast("退货记录已更新");
+  } else {
+    returns.unshift(rec); toast("退货登记成功");
+  }
+  saveAll(); resetForm(); renderReturns(); refreshSuppliers();
+};
+$("btnReset").onclick = resetForm;
+function resetForm(){
+  editId = null;
+  $("formTitle").textContent = "新增退货登记";
+  $("btnSave").textContent = "保存登记";
+  $("retForm").reset();
+  $("f_date").value = today();
+  $("f_model").value = MODELS[0]; fillColors();
+  segSet("f_volt","220V"); segSet("f_insp","待检");
+  $("issueWrap").style.display = "none"; $("f_qty").value = 1;
+  $("f_supplier").value = DEFAULT_SUPPLIER; $("f_express").value = "";
+}
+
+/* ================= 退货记录列表 ================= */
+function renderReturns(){
+  const kw = $("q1").value.trim().toLowerCase();
+  const fi = $("q1_insp").value;
+  const list = returns.filter(r =>
+    (!fi || r.insp === fi) &&
+    (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express].join(" ").toLowerCase().includes(kw))
+  );
+  $("retCount").textContent = `（共 ${list.length} 笔 / ${sum(list, r => +r.qty)} 台）`;
+  $("retEmpty").style.display = list.length ? "none" : "";
+  $("retTbody").innerHTML = list.map(r => {
+    const st = repStatus(r);
+    const pct = Math.min(100, Math.round(st.done / r.qty * 100));
+    return `<tr>
+      <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
+      <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td>
+      <td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
+      <td>${inspBadge(r.insp)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.issue)}">${esc(r.issue) || "—"}</td>
+      <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${st.done}/${r.qty}</span></div></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="editRet('${r.id}')">编辑</button>
+        <button class="btn btn-danger btn-sm" onclick="delRet('${r.id}')">删除</button>
+      </td></tr>`;
+  }).join("");
+  updateSideStats();
+}
+function editRet(id){
+  const r = returns.find(x => x.id === id); if (!r) return;
+  editId = id;
+  $("formTitle").textContent = "编辑退货记录";
+  $("btnSave").textContent = "保存修改";
+  $("f_date").value = r.date; $("f_order").value = r.orderNo || ""; $("f_express").value = r.express || ""; $("f_model").value = r.model; fillColors(r.color);
+  segSet("f_volt", r.volt); $("f_plug").value = r.plug; $("f_qty").value = r.qty;
+  $("f_supplier").value = r.supplier; segSet("f_insp", r.insp);
+  $("issueWrap").style.display = r.insp === "不合格" ? "" : "none";
+  $("f_issue").value = r.issue || "";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function delRet(id){
+  const r = returns.find(x => x.id === id);
+  if (!confirm(`确定删除这条退货记录？\n${r.date} ${r.model} ${r.color} ×${r.qty}\n关联的补发记录也会一并删除。`)) return;
+  returns = returns.filter(x => x.id !== id);
+  reps = reps.filter(x => x.returnId !== id);
+  saveAll(); renderReturns(); toast("已删除");
+}
+function clearAll(){
+  if (!returns.length) return toast("没有数据");
+  if (confirm("⚠️ 确定清空全部退货与补发数据？此操作不可恢复！")) {
+    returns = []; reps = []; saveAll(); renderReturns(); refreshSuppliers(); toast("已清空全部数据");
+  }
+}
+function refreshSuppliers(){
+  const sups = [...new Set(returns.map(r => r.supplier))].sort();
+  $("supList").innerHTML = sups.map(s => `<option value="${esc(s)}">`).join("");
+  $("q2_sup").innerHTML = '<option value="">全部</option>' + sups.map(s => `<option>${esc(s)}</option>`).join("");
+  $("s_sup").innerHTML = '<option value="">全部</option>' + sups.map(s => `<option>${esc(s)}</option>`).join("");
+  const colors = [...new Set(returns.map(r => r.color))].sort();
+  $("s_color").innerHTML = '<option value="">全部</option>' + colors.map(c => `<option>${esc(c)}</option>`).join("");
+}
+
+/* ================= 补发跟踪 ================= */
+function renderTrack(){
+  const kw = $("q2").value.trim().toLowerCase();
+  const fs = $("q2_status").value, fsup = $("q2_sup").value;
+  const list = returns.filter(r => {
+    const st = repStatus(r);
+    return (!fs || st.name === fs) && (!fsup || r.supplier === fsup) &&
+      (!kw || (r.model + r.color + (r.orderNo || "")).toLowerCase().includes(kw));
+  });
+  $("trkEmpty").style.display = list.length ? "none" : "";
+  $("trkTbody").innerHTML = list.map(r => {
+    const st = repStatus(r);
+    const pct = Math.min(100, Math.round(st.done / r.qty * 100));
+    return `<tr>
+      <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td><td>${esc(r.supplier)}</td>
+      <td><b>${r.qty}</b></td><td style="color:var(--green);font-weight:600">${st.done}</td>
+      <td style="color:${st.left>0?"var(--red)":"var(--ink3)"};font-weight:600">${st.left}</td>
+      <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${pct}%</span></div></td>
+      <td><span class="badge ${st.cls}">${st.name}</span></td>
+      <td>
+        ${st.left > 0 ? `<button class="btn btn-green btn-sm" onclick="openRep('${r.id}')">＋ 补发登记</button>` : ""}
+        <button class="btn btn-ghost btn-sm" onclick="openRep('${r.id}')">明细</button>
+      </td></tr>`;
+  }).join("");
+  updateSideStats();
+}
+
+/* ---- 补发弹窗 ---- */
+function openRep(retId){
+  repTarget = returns.find(r => r.id === retId); if (!repTarget) return;
+  const st = repStatus(repTarget);
+  $("repTitle").textContent = st.left > 0 ? "补发登记" : "补发明细";
+  $("repInfo").innerHTML = `退货单：<b>${esc(repTarget.date)}</b> ｜ 订单号 <b>${esc(repTarget.orderNo) || "—"}</b> ｜ <b>${esc(repTarget.model)}</b> ${esc(repTarget.color)} ${esc(repTarget.volt)} ${esc(repTarget.plug)}<br>
+    供应商：${esc(repTarget.supplier)} ｜ 应补 <b>${repTarget.qty}</b> 台，已补 <b style="color:var(--green)">${st.done}</b> 台，未补 <b style="color:var(--red)">${st.left}</b> 台`;
+  $("r_date").value = today(); $("r_qty").value = Math.max(1, st.left);
+  $("r_model").value = ""; $("r_model").placeholder = `默认：${repTarget.model}`;
+  $("r_note").value = "";
+  renderRepHist();
+  $("repMask").classList.add("on");
+}
+function closeRep(){ $("repMask").classList.remove("on"); repTarget = null; }
+function saveRep(){
+  if (!repTarget) return;
+  const qty = parseInt($("r_qty").value) || 0;
+  if (!$("r_date").value) return toast("请选择补发日期");
+  if (qty < 1) return toast("补发数量必须 ≥ 1");
+  const st = repStatus(repTarget);
+  if (qty > st.left && !confirm(`本次补发 ${qty} 台，超出未补数量 ${st.left} 台，确定继续？`)) return;
+  reps.push({ id: uid(), returnId: repTarget.id, date: $("r_date").value, qty,
+    model: $("r_model").value.trim() || repTarget.model, note: $("r_note").value.trim() });
+  saveAll(); renderRepHist(); renderTrack(); renderReturns();
+  toast("补发登记成功");
+  const nst = repStatus(repTarget);
+  if (nst.left <= 0) closeRep();
+  else { $("r_qty").value = nst.left; }
+}
+function renderRepHist(){
+  const list = reps.filter(r => r.returnId === repTarget.id).sort((a,b) => a.date.localeCompare(b.date));
+  $("repHistWrap").innerHTML = list.length ? `
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:8px">补发历史（${list.length} 次）</div>
+    <div class="tbl-wrap"><table><thead><tr><th>补发日期</th><th>补发型号</th><th>数量</th><th>备注</th><th>操作</th></tr></thead>
+    <tbody>${list.map(r => `<tr><td>${esc(r.date)}</td><td>${esc(r.model)}</td><td><b>${r.qty}</b></td><td>${esc(r.note)||"—"}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="delRep('${r.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`
+    : '<div style="font-size:.82rem;color:var(--ink3)">暂无补发记录</div>';
+}
+function delRep(id){
+  if (!confirm("删除这条补发记录？")) return;
+  reps = reps.filter(r => r.id !== id);
+  saveAll(); renderRepHist(); renderTrack(); renderReturns(); toast("已删除");
+}
+
+/* ================= 统计查询 ================= */
+$("s_model").innerHTML = '<option value="">全部</option>' + MODELS.map(m => `<option>${m}</option>`).join("");
+
+function statFiltered(){
+  const f = $("s_from").value, t = $("s_to").value;
+  const m = $("s_model").value, c = $("s_color").value, s = $("s_sup").value;
+  return returns.filter(r =>
+    (!f || r.date >= f) && (!t || r.date <= t) &&
+    (!m || r.model === m) && (!c || r.color === c) && (!s || r.supplier === s));
+}
+function renderStats(){
+  const list = statFiltered();
+  const total = sum(list, r => +r.qty);
+  const bad = sum(list.filter(r => r.insp === "不合格"), r => +r.qty);
+  const rep = sum(list, r => repQtyOf(r.id));
+  const due = total - Math.min(rep, total);
+  const dueN = list.filter(r => repStatus(r).left > 0).length;
+
+  $("st_total").textContent = total;
+  $("st_total_n").textContent = `${list.length} 笔记录`;
+  $("st_bad").textContent = bad;
+  $("st_bad_r").textContent = `占比 ${total ? Math.round(bad/total*100) : 0}%`;
+  $("st_rep").textContent = rep;
+  $("st_rep_r").textContent = `补发完成率 ${total ? Math.round(Math.min(rep,total)/total*100) : 0}%`;
+  $("st_due").textContent = due;
+  $("st_due_n").textContent = `${dueN} 笔未结清`;
+
+  /* 按型号 */
+  const byM = {};
+  list.forEach(r => {
+    byM[r.model] = byM[r.model] || {qty:0, rep:0, bad:0};
+    byM[r.model].qty += +r.qty; byM[r.model].rep += repQtyOf(r.id);
+    if (r.insp === "不合格") byM[r.model].bad += +r.qty;
+  });
+  const mRows = Object.entries(byM).sort((a,b) => b[1].qty - a[1].qty);
+  $("st_model_e").style.display = mRows.length ? "none" : "";
+  $("st_model_tb").innerHTML = mRows.map(([m, d]) => {
+    const left = Math.max(0, d.qty - d.rep);
+    return `<tr><td><b>${esc(m)}</b></td><td>${d.qty}</td><td style="color:var(--green)">${d.rep}</td>
+      <td style="color:${left>0?"var(--red)":"var(--ink3)"}">${left}</td>
+      <td>${d.bad ? `<span style="color:var(--red)">${d.bad}</span>` : "—"}</td></tr>`;
+  }).join("");
+
+  /* 按供应商 */
+  const byS = {};
+  list.forEach(r => {
+    byS[r.supplier] = byS[r.supplier] || {qty:0, rep:0};
+    byS[r.supplier].qty += +r.qty; byS[r.supplier].rep += repQtyOf(r.id);
+  });
+  const sRows = Object.entries(byS).sort((a,b) => b[1].qty - a[1].qty);
+  $("st_sup_e").style.display = sRows.length ? "none" : "";
+  $("st_sup_tb").innerHTML = sRows.map(([s, d]) => {
+    const left = Math.max(0, d.qty - d.rep);
+    const rate = d.qty ? Math.round(Math.min(d.rep, d.qty) / d.qty * 100) : 0;
+    return `<tr><td><b>${esc(s)}</b></td><td>${d.qty}</td><td style="color:var(--green)">${d.rep}</td>
+      <td style="color:${left>0?"var(--red)":"var(--ink3)"}">${left}</td>
+      <td><div class="prog"><div class="prog-bar"><i style="width:${rate}%"></i></div><span>${rate}%</span></div></td></tr>`;
+  }).join("");
+
+  /* 按颜色 */
+  const byC = {};
+  list.forEach(r => {
+    byC[r.color] = byC[r.color] || {qty:0, models:new Set()};
+    byC[r.color].qty += +r.qty; byC[r.color].models.add(r.model);
+  });
+  const cRows = Object.entries(byC).sort((a,b) => b[1].qty - a[1].qty);
+  $("st_color_e").style.display = cRows.length ? "none" : "";
+  $("st_color_tb").innerHTML = cRows.map(([c, d]) =>
+    `<tr><td><b>${esc(c)}</b></td><td>${d.qty}</td><td>${[...d.models].join("、")}</td>
+     <td>${total ? Math.round(d.qty/total*100) : 0}%</td></tr>`).join("");
+
+  /* 明细 */
+  $("st_detail_n").textContent = `共 ${list.length} 笔`;
+  $("st_detail_e").style.display = list.length ? "none" : "";
+  $("st_detail_tb").innerHTML = list.map(r => {
+    const st = repStatus(r);
+    return `<tr><td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
+      <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td><td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
+      <td>${inspBadge(r.insp)}</td><td><span class="badge ${st.cls}">${st.name}</span></td></tr>`;
+  }).join("");
+  updateSideStats();
+}
+function resetStatFilter(){
+  ["s_from","s_to"].forEach(i => $(i).value = "");
+  ["s_model","s_color","s_sup"].forEach(i => $(i).value = "");
+  renderStats();
+}
+
+/* ================= 侧边栏迷你概览 ================= */
+function updateSideStats(){
+  const total = sum(returns, r => +r.qty);
+  const due = returns.filter(r => repStatus(r).left > 0).reduce((a,r)=>a+repStatus(r).left,0);
+  $("sm_total").textContent = total;
+  $("sm_due").textContent = due;
+}
+
+/* ================= 导出 & 工具 ================= */
+function dlCSV(filename, head, rows){
+  const csv = "﻿" + [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+  a.download = filename; a.click();
+}
+function exportCSV(){
+  if (!returns.length) return toast("没有数据可导出");
+  const head = ["退货日期","订单号","快递单号","型号","颜色","电压","插头规格","退货数量","供应商","检验情况","问题描述","已补数量","未补数量","补发状态"];
+  const rows = returns.map(r => {
+    const st = repStatus(r);
+    return [r.date, r.orderNo || "", r.express || "", r.model, r.color, r.volt, r.plug, r.qty, r.supplier, r.insp, r.issue || "", st.done, st.left, st.name];
+  });
+  dlCSV(`熨斗退货台账_${today()}.csv`, head, rows);
+  toast("退货 CSV 已导出（可用 Excel/WPS 打开）");
+}
+function exportRepCSV(){
+  if (!reps.length) return toast("暂无补发记录可导出");
+  const head = ["补发日期","关联订单号","退货日期","退货型号","颜色","供应商","应补数量","补发型号","补发数量","备注","补发后状态"];
+  const rows = reps.map(p => {
+    const r = returns.find(x => x.id === p.returnId) || {};
+    const st = r.id ? repStatus(r) : {name:"—"};
+    return [p.date, r.orderNo || "", r.date || "", r.model || "", r.color || "", r.supplier || "", r.qty ?? "", p.model, p.qty, p.note || "", st.name];
+  }).sort((a,b) => a[0].localeCompare(b[0]));
+  dlCSV(`补发记录_${today()}.csv`, head, rows);
+  toast("补发 CSV 已导出");
+}
+function backupJSON(){
+  const data = { app:"iron-returns", version:1, exportedAt:new Date().toISOString(), returns, reps };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:"application/json"}));
+  a.download = `熨斗退货台账_备份_${today()}.json`; a.click();
+  toast("备份文件已下载，请妥善保存");
+}
+function importJSON(input){
+  const file = input.files[0]; input.value = "";
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (data.app !== "iron-returns" || !Array.isArray(data.returns) || !Array.isArray(data.reps))
+        return toast("文件格式不正确，请选择本系统导出的备份文件");
+      if (!confirm(`备份包含 ${data.returns.length} 笔退货、${data.reps.length} 条补发记录。\n恢复后将【覆盖】当前全部数据，确定继续？`)) return;
+      returns = data.returns; reps = data.reps;
+      saveAll(); resetForm(); renderReturns(); refreshSuppliers();
+      toast("数据恢复成功");
+    } catch(e){ toast("文件解析失败，请检查文件"); }
+  };
+  reader.readAsText(file);
+}
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.classList.remove("on"), 2200);
+}
+function seedDemo(){
+  if (returns.length && !confirm("载入示例数据会追加到现有数据，继续？")) return;
+  const demo = [
+    {date:"2026-08-02", orderNo:"DD202608001", model:"M2", color:"红", volt:"220V", plug:"国标", qty:5, supplier:"东莞", insp:"不合格", issue:"底板刮花、蒸汽漏水"},
+    {date:"2026-08-05", orderNo:"DD202608002", model:"L2", color:"紫", volt:"110V", plug:"美规", qty:3, supplier:"东莞", insp:"合格", issue:""},
+    {date:"2026-08-08", orderNo:"DD202608003", model:"L3", color:"绿", volt:"220V", plug:"欧规", qty:2, supplier:"东莞", insp:"不合格", issue:"不通电"},
+    {date:"2026-08-12", orderNo:"DD202608004", model:"L", color:"红", volt:"220V", plug:"国标", qty:4, supplier:"东莞", insp:"待检", issue:""},
+    {date:"2026-08-15", orderNo:"DD202608005", model:"M2", color:"灰", volt:"110V", plug:"美规", qty:6, supplier:"东莞", insp:"不合格", issue:"指示灯不亮"},
+    {date:"2026-08-18", orderNo:"DD202608006", model:"L", color:"绿", volt:"220V", plug:"英规", qty:2, supplier:"东莞", insp:"合格", issue:""}
+  ].map(d => ({id: uid() + Math.random().toString(36).slice(2,5), ...d}));
+  returns = [...demo, ...returns];
+  const d = returns.find(r => r.model === "M2" && r.color === "红");
+  reps.push({id: uid(), returnId: d.id, date:"2026-08-10", qty:2, model:"M2", note:"顺丰 SF123456"});
+  const d3 = returns.find(r => r.model === "L2");
+  reps.push({id: uid(), returnId: d3.id, date:"2026-08-09", qty:3, model:"L2", note:"已补完"});
+  saveAll(); renderReturns(); refreshSuppliers(); toast("示例数据已载入");
+}
+
+/* ================= 扫码识别快递单号 ================= */
+let scanControls = null, scanReader = null;
+function buildHints(){
+  const h = new Map();
+  h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A,
+    ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX
+  ]);
+  h.set(ZXing.DecodeHintType.TRY_HARDER, false); // 关闭硬解，提速
+  return h;
+}
+function loadScanLib(cb){
+  if (window.ZXing && window.ZXing.BrowserMultiFormatReader){ cb(true); return; }
+  if (document.getElementById("zxScript")){ cb(false); return; }
+  const s = document.createElement("script");
+  s.id = "zxScript";
+  s.src = "zxing.min.js";
+  s.onload = () => cb(!!(window.ZXing && window.ZXing.BrowserMultiFormatReader));
+  s.onerror = () => cb(false);
+  document.head.appendChild(s);
+}
+function openScanner(){
+  loadScanLib(ok => {
+    if (!ok){ toast("扫码组件加载失败（请确认 zxing.min.js 与本文件在同一目录），可手动输入单号"); return; }
+    $("scanMask").classList.add("on");
+    const tip = $("scanTip"), view = $("scanView");
+    tip.className = "scan-tip"; view.classList.remove("flash");
+    tip.textContent = "正在打开摄像头……请将面单条形码对准取景框";
+    try {
+      scanReader = new ZXing.BrowserMultiFormatReader();
+      scanReader.hints = buildHints();
+      scanReader.timeBetweenDecodingAttempts = 0; // 逐帧解码，最低延迟
+      const constraints = { audio:false, video:{ facingMode:"environment", width:{ideal:1280}, height:{ideal:720} } };
+      scanReader.decodeFromConstraints(constraints, "scanVideo", (result) => {
+        if (result){
+          const txt = (result.getText() || "").trim();
+          if (txt){
+            $("f_express").value = txt; view.classList.add("flash");
+            toast("已识别单号：" + txt); setTimeout(closeScanner, 280);
+          }
+        }
+      }).then(controls => { scanControls = controls; })
+        .catch(err => {
+          tip.className = "scan-tip err";
+          tip.textContent = "无法访问摄像头：" + (err && err.message ? err.message : err) + "（可点「手动输入」）";
+        });
+    } catch(e){
+      tip.className = "scan-tip err"; tip.textContent = "当前环境不支持扫码（请用预览/部署地址打开）";
+    }
+  });
+}
+function captureFrame(){
+  const v = $("scanVideo");
+  if (!scanReader){ toast("请先等待摄像头就绪"); return; }
+  if (!v.videoWidth){ toast("摄像头还未就绪，请稍候"); return; }
+  const c = $("scanCanvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+  $("scanTip").className = "scan-tip";
+  $("scanTip").textContent = "识别中……";
+  try {
+    const p = scanReader.decodeFromImage(c);
+    if (p && typeof p.then === "function"){
+      p.then(res => {
+        const txt = (res.getText() || "").trim();
+        if (txt){ $("f_express").value = txt; $("scanView").classList.add("flash"); toast("已识别单号：" + txt); setTimeout(closeScanner, 280); }
+        else { $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; }
+      }).catch(() => { $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; });
+    } else { $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; }
+  } catch(e){ $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; }
+}
+function closeScanner(){
+  try { scanControls && scanControls.stop(); } catch(e){}
+  scanControls = null; scanReader = null;
+  $("scanMask").classList.remove("on");
+}
+
+/* ================= 云端同步（GitHub 仓库，跨设备） ================= */
+let cloudCfg = { enabled:false, token:"", owner:"1625804272", repo:"iron-returns", path:"data/returns.json", sha:null };
+let pushTimer = null;
+function loadCloudSettings(){
+  try { const s = JSON.parse(localStorage.getItem("iron_cloud_v1")); if (s) cloudCfg = Object.assign(cloudCfg, s); } catch(e){}
+}
+function saveCloudSettings(){ localStorage.setItem("iron_cloud_v1", JSON.stringify(cloudCfg)); }
+function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64dec(b64){ return decodeURIComponent(escape(atob(b64))); }
+function ghHeaders(){ const h = { "Accept":"application/vnd.github+json" }; if (cloudCfg.token) h["Authorization"] = "Bearer " + cloudCfg.token; return h; }
+function cloudApiUrl(){ return `https://api.github.com/repos/${cloudCfg.owner}/${cloudCfg.repo}/contents/${encodeURIComponent(cloudCfg.path)}`; }
+function cloudActive(){ return !!(cloudCfg.enabled && cloudCfg.token); }
+function updateCloudChip(state){ const el = $("cloudState"); if (!el) return; el.textContent = state || (cloudActive() ? "云端" : "本地"); }
+function schedulePush(){
+  if (!cloudActive()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { updateCloudChip("同步中"); pushCloud(); }, 700);
+}
+function mergeCloud(cloud){
+  const m = new Map(); (cloud.returns||[]).forEach(r => m.set(r.id, r)); returns.forEach(r => m.set(r.id, r)); returns = [...m.values()];
+  const m2 = new Map(); (cloud.reps||[]).forEach(r => m2.set(r.id, r)); reps.forEach(r => m2.set(r.id, r)); reps = [...m2.values()];
+}
+function pullCloud(){
+  if (!cloudActive()) return Promise.resolve();
+  updateCloudChip("同步中");
+  return fetch(cloudApiUrl(), { headers: ghHeaders() })
+    .then(r => { if (r.status === 404) return null; if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(j => {
+      if (!j){ cloudCfg.sha = null; saveCloudSettings(); return pushCloud(); }
+      try { mergeCloud(JSON.parse(b64dec(j.content))); } catch(e){ throw new Error("数据解析失败"); }
+      cloudCfg.sha = j.sha; saveCloudSettings(); updateCloudChip("已同步"); return true;
+    })
+    .catch(e => { updateCloudChip("拉取失败"); console.warn("pullCloud:", e); });
+}
+function pushCloud(){
+  if (!cloudActive()) return Promise.resolve();
+  const payload = { app:"iron-returns", version:1, savedAt:new Date().toISOString(), returns, reps };
+  const content = b64enc(JSON.stringify(payload));
+  const headers = ghHeaders(); headers["Content-Type"] = "application/json";
+  const body = { message:"sync returns data", content, committer:{ name:"iron-app", email:"app@local" } };
+  return fetch(cloudApiUrl(), { headers })
+    .then(r => r.status === 404 ? null : (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+    .then(j => { if (j) body.sha = j.sha; return fetch(cloudApiUrl(), { method:"PUT", headers, body: JSON.stringify(body) }); })
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(j => { cloudCfg.sha = (j.content && j.content.sha) || cloudCfg.sha; saveCloudSettings(); updateCloudChip("已同步"); })
+    .catch(e => { updateCloudChip("同步失败"); console.warn("pushCloud:", e); });
+}
+function initCloud(){
+  loadCloudSettings();
+  if (cloudActive()){
+    pullCloud().finally(() => { renderReturns(); refreshSuppliers(); updateSideStats(); });
+  } else {
+    updateCloudChip("本地"); renderReturns(); refreshSuppliers(); updateSideStats();
+  }
+}
+function openCloud(){
+  loadCloudSettings();
+  $("c_enabled").checked = !!cloudCfg.enabled;
+  $("c_token").value = cloudCfg.token || "";
+  $("c_repo").value = cloudCfg.owner + "/" + cloudCfg.repo;
+  $("c_path").value = cloudCfg.path;
+  $("cloudMsg").textContent = "";
+  $("cloudMask").classList.add("on");
+}
+function closeCloud(){ $("cloudMask").classList.remove("on"); }
+function saveCloudSettingsUI(){
+  const repo = $("c_repo").value.trim();
+  const mm = repo.match(/^([^/]+)\/(.+)$/);
+  if (!mm){ $("cloudMsg").textContent = "仓库格式应为 owner/repo"; $("cloudMsg").className = "scan-tip err"; return; }
+  if (!$("c_token").value.trim()){ $("cloudMsg").textContent = "请填写 GitHub Token"; $("cloudMsg").className = "scan-tip err"; return; }
+  cloudCfg.enabled = $("c_enabled").checked;
+  cloudCfg.token = $("c_token").value.trim();
+  cloudCfg.owner = mm[1]; cloudCfg.repo = mm[2];
+  cloudCfg.path = $("c_path").value.trim() || "data/returns.json";
+  saveCloudSettings();
+  $("cloudMsg").textContent = "已保存，正在连接……"; $("cloudMsg").className = "scan-tip";
+  if (cloudCfg.enabled){
+    pullCloud().then(() => { renderReturns(); refreshSuppliers(); updateSideStats();
+      $("cloudMsg").textContent = "连接成功，数据已与云端合并"; $("cloudMsg").className = "scan-tip"; });
+  } else { updateCloudChip("本地"); $("cloudMsg").textContent = "已保存（未启用同步）"; }
+  toast("云端设置已保存");
+}
+function cloudSyncNow(){
+  if (!cloudActive()){ $("cloudMsg").textContent = "请先启用并填写 Token 与仓库"; $("cloudMsg").className = "scan-tip err"; return; }
+  $("cloudMsg").textContent = "同步中……"; $("cloudMsg").className = "scan-tip";
+  pullCloud().then(() => { pushCloud().then(() => { renderReturns(); refreshSuppliers(); updateSideStats();
+    $("cloudMsg").textContent = "同步完成"; $("cloudMsg").className = "scan-tip"; }); });
+}
+
+/* ================= 启动 ================= */
+initForm(); initCloud();
+$("repMask").addEventListener("click", e => { if (e.target === $("repMask")) closeRep(); });
+$("scanMask").addEventListener("click", e => { if (e.target === $("scanMask")) closeScanner(); });
+$("cloudMask").addEventListener("click", e => { if (e.target === $("cloudMask")) closeCloud(); });
+</script>
+</body>
+</html>
