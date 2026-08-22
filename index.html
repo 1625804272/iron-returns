@@ -589,6 +589,7 @@
     <div class="modal-b">
       <div class="scan-view" id="scanView"><video id="scanVideo" playsinline></video><div class="scan-line"></div></div>
       <p class="scan-tip" id="scanTip">正在打开摄像头……请将面单条形码对准取景框</p>
+      <p style="font-size:.75rem;color:var(--ink3);text-align:center;margin:8px 2px 0;line-height:1.6">💡 识别成功或页面切后台时自动关闭摄像头；超过 90 秒未识别也会自动关闭，避免手机发热</p>
       <div class="form-actions">
         <button class="btn btn-ghost" onclick="closeScanner()">取消</button>
         <button class="btn btn-green" onclick="captureFrame()">📸 拍照识别</button>
@@ -1174,7 +1175,7 @@ function seedDemo(){
 }
 
 /* ================= 扫码识别快递单号 ================= */
-let scanControls = null, scanReader = null;
+let scanControls = null, scanReader = null, scanAutoClose = null;
 function buildHints(){
   const h = new Map();
   h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
@@ -1205,13 +1206,17 @@ function openScanner(){
     try {
       scanReader = new ZXing.BrowserMultiFormatReader();
       scanReader.hints = buildHints();
-      scanReader.timeBetweenDecodingAttempts = 0; // 逐帧解码，最低延迟
-      const constraints = { audio:false, video:{ facingMode:"environment", width:{ideal:1280}, height:{ideal:720} } };
+      // 降频解码（150ms 一帧）替代逐帧全速解码，显著降低 CPU 占用与发热
+      scanReader.timeBetweenDecodingAttempts = 150;
+      // 用 480p 视频流，解码负载约为 720p 的 1/3，快递条码完全够用
+      const constraints = { audio:false, video:{ facingMode:"environment", width:{ideal:640}, height:{ideal:480} } };
       scanReader.decodeFromConstraints(constraints, "scanVideo", (result) => {
         if (result){
           const txt = (result.getText() || "").trim();
           if (txt){
             $("f_express").value = txt; view.classList.add("flash");
+            stopScanStream();              // 识别成功立即停摄像头，避免持续占用发热
+            clearTimeout(scanAutoClose);
             toast("已识别单号：" + txt); setTimeout(closeScanner, 280);
           }
         }
@@ -1220,10 +1225,28 @@ function openScanner(){
           tip.className = "scan-tip err";
           tip.textContent = "无法访问摄像头：" + (err && err.message ? err.message : err) + "（可点「手动输入」）";
         });
+      // 防忘关兜底：90 秒未识别自动关闭摄像头
+      clearTimeout(scanAutoClose);
+      scanAutoClose = setTimeout(() => {
+        if ($("scanMask").classList.contains("on")){
+          toast("长时间未识别，已自动关闭摄像头"); closeScanner();
+        }
+      }, 90000);
     } catch(e){
       tip.className = "scan-tip err"; tip.textContent = "当前环境不支持扫码（请用预览/部署地址打开）";
     }
   });
+}
+function stopScanStream(){
+  try { scanControls && scanControls.stop(); } catch(e){}
+  try {
+    const v = $("scanVideo");
+    if (v && v.srcObject){
+      (v.srcObject.getTracks() || []).forEach(t => t.stop());
+      v.srcObject = null;
+    }
+  } catch(e){}
+  scanControls = null;
 }
 function captureFrame(){
   const v = $("scanVideo");
@@ -1238,17 +1261,25 @@ function captureFrame(){
     if (p && typeof p.then === "function"){
       p.then(res => {
         const txt = (res.getText() || "").trim();
-        if (txt){ $("f_express").value = txt; $("scanView").classList.add("flash"); toast("已识别单号：" + txt); setTimeout(closeScanner, 280); }
+        if (txt){ $("f_express").value = txt; $("scanView").classList.add("flash"); stopScanStream(); clearTimeout(scanAutoClose); toast("已识别单号：" + txt); setTimeout(closeScanner, 280); }
         else { $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; }
       }).catch(() => { $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; });
     } else { $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; }
   } catch(e){ $("scanTip").className = "scan-tip err"; $("scanTip").textContent = "未识别，请调整角度、距离或光线后重试"; }
 }
 function closeScanner(){
-  try { scanControls && scanControls.stop(); } catch(e){}
-  scanControls = null; scanReader = null;
+  stopScanStream();
+  clearTimeout(scanAutoClose);
+  try { scanReader && scanReader.reset && scanReader.reset(); } catch(e){}
+  scanReader = null;
   $("scanMask").classList.remove("on");
 }
+/* 页面切后台（锁屏/切 App）自动关闭摄像头，防止持续调用发热 */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && $("scanMask").classList.contains("on")){
+    toast("已切换到后台，摄像头已关闭"); closeScanner();
+  }
+});
 
 /* ================= 云端同步（GitHub 仓库，跨设备） ================= */
 let cloudCfg = { enabled:false, token:"", owner:"1625804272", repo:"iron-returns", path:"data/returns.json", sha:null };
