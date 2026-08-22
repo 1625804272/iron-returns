@@ -540,7 +540,7 @@
   <div class="modal">
     <div class="modal-h"><h3>云端同步设置</h3><button class="x" onclick="closeCloud()">✕</button></div>
     <div class="modal-b">
-      <div class="info-strip" id="cloudInfo">启用后数据保存在你的 GitHub 仓库（跨设备同步）。Token 需有 repo 权限且仓库须已存在；Token 仅存于本机浏览器。</div>
+      <div class="info-strip" id="cloudInfo">启用后数据保存在你的 GitHub 仓库（跨设备同步）。Token 需有 repo 权限且仓库须已存在；Token 仅存于本机浏览器。<br>📦 自动备份：每天<b>打开网站时</b>与<b>17:00</b>各自动备份一次到 data/backups/（保留最近 30 份）。</div>
       <div class="field" style="margin-bottom:12px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="c_enabled" style="width:18px;height:18px"> 启用云端同步（跨设备）
@@ -556,6 +556,7 @@
         <button class="btn btn-ghost" onclick="clearCloudCfg()">清除配置</button>
         <button class="btn btn-ghost" onclick="closeCloud()">关闭</button>
         <button class="btn btn-green" onclick="cloudSyncNow()">立即同步</button>
+        <button class="btn btn-green" onclick="autoBackup('manual')">立即备份</button>
         <button class="btn btn-pri" onclick="saveCloudSettingsUI()">保存并连接</button>
       </div>
     </div>
@@ -1291,10 +1292,11 @@ function saveCloudSettings(){ localStorage.setItem("iron_cloud_v1", JSON.stringi
 function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
 function b64dec(b64){ return decodeURIComponent(escape(atob(b64))); }
 function ghHeaders(){ const h = { "Accept":"application/vnd.github+json" }; if (cloudCfg.token) h["Authorization"] = "Bearer " + cloudCfg.token; return h; }
-function cloudApiUrl(){
-  const p = cloudCfg.path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+function ghApiUrl(path){
+  const p = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
   return `https://api.github.com/repos/${encodeURIComponent(cloudCfg.owner)}/${encodeURIComponent(cloudCfg.repo)}/contents/${p}`;
 }
+function cloudApiUrl(){ return ghApiUrl(cloudCfg.path); }
 function cloudActive(){ return !!(cloudCfg.enabled && cloudCfg.token && cloudCfg.owner && cloudCfg.repo); }
 function updateCloudChip(state){ const el = $("cloudState"); if (!el) return; el.textContent = state || (cloudActive() ? "云端" : "本地"); }
 function cloudMsg(txt, err){ const el = $("cloudMsg"); if (!el) return; el.textContent = txt; el.className = "scan-tip" + (err ? " err" : ""); }
@@ -1378,10 +1380,92 @@ function initCloud(){
       if (res.ok && !res.exists) return pushCloud();          // 首次：创建云端文件
       if (!res.ok) updateCloudChip("拉取失败");
       return res;
-    }).finally(() => { renderReturns(); refreshSuppliers(); updateSideStats(); });
+    }).finally(() => {
+      renderReturns(); refreshSuppliers(); updateSideStats();
+      // 自动备份：打开网站同步完成后备份一次；并调度 17:00 备份
+      autoBackup("open", true);
+      catchUpDailyBackup();
+      scheduleDailyBackup();
+    });
   } else {
     updateCloudChip("本地"); renderReturns(); refreshSuppliers(); updateSideStats();
+    scheduleDailyBackup();
   }
+}
+
+/* ================= 自动备份（云端 data/backups/，每日打开时 + 17:00） ================= */
+const AUTO_BAK_KEY = "iron_autobak_v1";
+let autoBakTimer = null;
+function autoBakState(){ try { return JSON.parse(localStorage.getItem(AUTO_BAK_KEY)) || {}; } catch(e){ return {}; } }
+function saveAutoBakState(s){ localStorage.setItem(AUTO_BAK_KEY, JSON.stringify(s)); }
+function bakFileName(){
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  return `data/backups/returns_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}.json`;
+}
+/* 自动备份一次。kind: "open"|"daily"|"manual"；open/daily 每日去重（一天最多各 1 次），manual 总是执行 */
+function autoBackup(kind, silent){
+  if (!cloudActive()){
+    if (!silent) toast("自动备份需先启用云端同步（顶栏 ☁️）");
+    return Promise.resolve({ ok:false });
+  }
+  const st = autoBakState();
+  const today = new Date().toISOString().slice(0,10);
+  const key = kind === "daily" ? "lastDaily" : (kind === "open" ? "lastOpen" : null);
+  if (key && st[key] === today) return Promise.resolve({ ok:true, skip:true });
+  const path = bakFileName();
+  const payload = { app:"iron-returns", version:1, exportedAt:new Date().toISOString(), returns, reps };
+  const headers = ghHeaders(); headers["Content-Type"] = "application/json";
+  const body = { message:"auto backup " + path, content:b64enc(JSON.stringify(payload)), committer:{ name:"iron-app", email:"app@local" } };
+  return fetch(ghApiUrl(path), { headers })
+    .then(r => r.status === 404 ? null : (r.ok ? r.json() : Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status }))))
+    .then(j => { if (j) body.sha = j.sha; return fetch(ghApiUrl(path), { method:"PUT", headers, body: JSON.stringify(body) }); })
+    .then(r => { if (!r.ok) return Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status })); return r.json(); })
+    .then(() => {
+      if (key) { st[key] = today; saveAutoBakState(st); }
+      pruneBackups();
+      if (!silent) toast("自动备份完成 ✅ " + path.split("/").pop());
+      return { ok:true };
+    })
+    .catch(e => {
+      console.warn("autoBackup:", e);
+      if (!silent) toast("自动备份失败：" + apiErr(e));
+      return { ok:false, error:apiErr(e) };
+    });
+}
+/* 清理旧备份，最多保留 maxKeep 份 */
+function pruneBackups(maxKeep){
+  maxKeep = maxKeep || 30;
+  fetch(ghApiUrl("data/backups"), { headers: ghHeaders() })
+    .then(r => r.ok ? r.json() : null)
+    .then(list => {
+      if (!Array.isArray(list)) return;
+      const files = list.filter(x => x.name && x.name.endsWith(".json") && x.sha).sort((a,b) => a.name.localeCompare(b.name));
+      const excess = files.length - maxKeep;
+      if (excess <= 0) return;
+      files.slice(0, excess).forEach(f => {
+        fetch(ghApiUrl("data/backups/" + f.name), {
+          method:"DELETE", headers: ghHeaders(),
+          body: JSON.stringify({ message:"prune old backup " + f.name, sha: f.sha })
+        }).catch(() => {});
+      });
+    }).catch(() => {});
+}
+/* 每天 17:00 定时备份（页面保持打开时触发） */
+function scheduleDailyBackup(){
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0, 0);
+  if (now >= target) target.setDate(target.getDate() + 1);
+  clearTimeout(autoBakTimer);
+  autoBakTimer = setTimeout(() => { autoBackup("daily"); scheduleDailyBackup(); }, target - now);
+}
+/* 打开网站时补做：今天已过 17:00 且当日未备份 → 补备份一次 */
+function catchUpDailyBackup(){
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  const st = autoBakState();
+  if (st.lastDaily === today) return;
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0, 0);
+  if (now >= target) autoBackup("daily", true);
 }
 function openCloud(){
   loadCloudSettings();
