@@ -356,7 +356,7 @@
               <div class="field">
                 <label>检验情况 <span class="req">*</span></label>
                 <div class="seg" id="f_insp">
-                  <button type="button" class="on" data-v="待检">待检</button>
+                  <button type="button" class="on" data-v="缺料">缺料</button>
                   <button type="button" data-v="合格">合格</button>
                   <button type="button" data-v="不合格">不合格</button>
                 </div>
@@ -391,7 +391,7 @@
           <div class="filter-bar" style="box-shadow:none;padding:0 0 14px;border:none;margin-bottom:12px">
             <div class="field" style="min-width:200px"><label>搜索</label><input id="q1" placeholder="型号 / 颜色 / 供应商 / 订单号 / 问题描述" oninput="renderReturns()"></div>
             <div class="field" style="min-width:130px"><label>检验情况</label>
-              <select id="q1_insp" onchange="renderReturns()"><option value="">全部</option><option>待检</option><option>合格</option><option>不合格</option></select>
+              <select id="q1_insp" onchange="renderReturns()"><option value="">全部</option><option>缺料</option><option>合格</option><option>不合格</option></select>
             </div>
           </div>
           <div class="tbl-wrap" id="retWrap">
@@ -626,6 +626,12 @@ const isMobile = () => window.matchMedia("(max-width:760px)").matches;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const today = () => new Date().toISOString().slice(0,10);
 const saveAll = () => { localStorage.setItem(LS_RET, JSON.stringify(returns)); localStorage.setItem(LS_REP, JSON.stringify(reps)); schedulePush(); };
+/* 一次性数据迁移：检验状态「待检」→「缺料」（本地 + 后续云端合入的旧值统一） */
+(function migrateInspect(){
+  let changed = false;
+  returns.forEach(r => { if (r.insp === "待检"){ r.insp = "缺料"; changed = true; } });
+  if (changed){ localStorage.setItem(LS_RET, JSON.stringify(returns)); }
+})();
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const sum = (arr, f) => arr.reduce((a,b) => a + f(b), 0);
 
@@ -640,7 +646,7 @@ function repStatus(r){
 function inspBadge(i){
   return i === "合格" ? '<span class="badge b-ok">合格</span>'
        : i === "不合格" ? '<span class="badge b-bad">不合格</span>'
-       : '<span class="badge b-wait">待检</span>';
+       : '<span class="badge b-wait">缺料</span>';
 }
 /* ================= 不合格原因选择 ================= */
 const REASON_OPTIONS = ["不通电","不加热","屏幕不显示","壳料破损脏污","发热板脏污或划痕"];
@@ -759,7 +765,7 @@ function resetForm(){
   $("retForm").reset();
   $("f_date").value = today();
   $("f_model").value = MODELS[0]; fillColors();
-  segSet("f_volt","220V"); segSet("f_insp","待检");
+  segSet("f_volt","220V"); segSet("f_insp","缺料");
   $("issueWrap").style.display = "none"; reasonSel = []; $("f_reason_extra").value = ""; $("f_qty").value = 1;
   $("f_supplier").value = DEFAULT_SUPPLIER; $("f_express").value = ""; $("f_note").value = "";
 }
@@ -769,7 +775,7 @@ function renderReturns(){
   const kw = $("q1").value.trim().toLowerCase();
   const fi = $("q1_insp").value;
   const list = returns.filter(r =>
-    (!fi || r.insp === fi) &&
+    (!fi || (fi === "缺料" ? (r.insp === "缺料" || r.insp === "待检") : r.insp === fi)) &&
     (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express, r.note, (r.reasons || []).join(" ")].join(" ").toLowerCase().includes(kw))
   );
   $("retCount").textContent = `（共 ${list.length} 笔 / ${sum(list, r => +r.qty)} 台）`;
@@ -1163,7 +1169,7 @@ function seedDemo(){
     {date:"2026-08-02", orderNo:"DD202608001", model:"M2", color:"红", volt:"220V", plug:"国标", qty:5, supplier:"东莞", insp:"不合格", reasons:["发热板脏污或划痕","壳料破损脏污"], issue:"底板刮花、蒸汽漏水", note:"客户要求退换新机"},
     {date:"2026-08-05", orderNo:"DD202608002", model:"L2", color:"紫", volt:"110V", plug:"美规", qty:3, supplier:"东莞", insp:"合格", issue:"", note:"仅退货退款，无需补发"},
     {date:"2026-08-08", orderNo:"DD202608003", model:"L3", color:"绿", volt:"220V", plug:"欧规", qty:2, supplier:"东莞", insp:"不合格", reasons:["不通电"], issue:"不通电"},
-    {date:"2026-08-12", orderNo:"DD202608004", model:"L", color:"红", volt:"220V", plug:"国标", qty:4, supplier:"东莞", insp:"待检", issue:""},
+    {date:"2026-08-12", orderNo:"DD202608004", model:"L", color:"红", volt:"220V", plug:"国标", qty:4, supplier:"东莞", insp:"缺料", issue:""},
     {date:"2026-08-15", orderNo:"DD202608005", model:"M2", color:"灰", volt:"110V", plug:"美规", qty:6, supplier:"东莞", insp:"不合格", issue:"指示灯不亮"},
     {date:"2026-08-18", orderNo:"DD202608006", model:"L", color:"绿", volt:"220V", plug:"英规", qty:2, supplier:"东莞", insp:"合格", issue:""}
   ].map(d => ({id: uid() + Math.random().toString(36).slice(2,5), ...d}));
@@ -1318,7 +1324,9 @@ function schedulePush(){
   pushTimer = setTimeout(() => { updateCloudChip("同步中"); pushCloud(); }, 700);
 }
 function mergeCloud(cloud){
-  const m = new Map(); (cloud.returns||[]).forEach(r => m.set(r.id, r)); returns.forEach(r => m.set(r.id, r)); returns = [...m.values()];
+  const m = new Map();
+  (cloud.returns||[]).forEach(r => { if (r.insp === "待检") r.insp = "缺料"; m.set(r.id, r); });
+  returns.forEach(r => m.set(r.id, r)); returns = [...m.values()];
   const m2 = new Map(); (cloud.reps||[]).forEach(r => m2.set(r.id, r)); reps.forEach(r => m2.set(r.id, r)); reps = [...m2.values()];
 }
 /* 验证 Token：成功返回 {ok:true, login}；失败返回 {ok:false, error} */
