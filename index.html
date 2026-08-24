@@ -425,7 +425,7 @@
           <div class="tbl-wrap" id="trkWrap">
             <table>
               <thead><tr>
-                <th>退货日期</th><th>订单号</th><th>型号</th><th>颜色</th><th>供应商</th><th>应补</th><th>已补</th><th>未补</th><th>补发进度</th><th>状态</th><th>操作</th>
+                <th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>供应商</th><th>检验</th><th>应补</th><th>已补</th><th>未补</th><th>补发进度</th><th>状态</th><th>操作</th>
               </tr></thead>
               <tbody id="trkTbody"></tbody>
             </table>
@@ -887,6 +887,8 @@ function renderTrack(){
         <div class="m-grid">
           <div><span>退货日期</span><i>${esc(r.date)}</i></div>
           <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
+          <div><span>快递单号</span><i>${esc(r.express) || "—"}</i></div>
+          <div><span>检验</span><i>${inspBadge(r.insp)}</i></div>
           <div><span>应补</span><i><b>${r.qty}</b> 台</i></div>
           <div><span>已补</span><i style="color:var(--green);font-weight:600">${st.done}</i></div>
           <div><span>未补</span><i style="color:${st.left>0?"var(--red)":"var(--ink3)"};font-weight:600">${st.left}</i></div>
@@ -907,6 +909,7 @@ function renderTrack(){
       const pct = Math.min(100, Math.round(st.done / r.qty * 100));
       return `<tr>
         <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td><td>${esc(r.supplier)}</td>
+        <td>${inspBadge(r.insp)}</td>
         <td><b>${r.qty}</b></td><td style="color:var(--green);font-weight:600">${st.done}</td>
         <td style="color:${st.left>0?"var(--red)":"var(--ink3)"};font-weight:600">${st.left}</td>
         <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${pct}%</span></div></td>
