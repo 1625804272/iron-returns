@@ -1179,12 +1179,15 @@ function seedDemo(){
 let scanControls = null, scanReader = null, scanAutoClose = null;
 function buildHints(){
   const h = new Map();
+  // 覆盖主流物流/快递面单码制：Code 128/Code 39/Code 93/ITF/二维码
   h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.CODE_93,
+    ZXing.BarcodeFormat.ITF,                                              // 国内区域货运/物流面单常见（粗黑条状）
     ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A,
     ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX
   ]);
-  h.set(ZXing.DecodeHintType.TRY_HARDER, false); // 关闭硬解，提速
+  // 启用多方向/多采样解码，对高密度、倾斜、远距离的物流条码显著提升识别率（发热问题已通过降频+480p+立即停流解决）
+  h.set(ZXing.DecodeHintType.TRY_HARDER, true);
   return h;
 }
 function loadScanLib(cb){
