@@ -227,6 +227,7 @@
           <form id="inForm" onsubmit="return false">
             <div class="form-grid">
               <div class="field"><label>入库日期 <span class="req">*</span></label><input type="date" id="in_date" required></div>
+              <div class="field"><label>订单号 <span class="req">*</span></label><input type="text" id="in_order" placeholder="如 CK20260826001" required></div>
               <div class="field"><label>型号 <span class="req">*</span></label><select id="in_model"></select></div>
               <div class="field"><label>数量 <span class="req">*</span></label><input type="number" id="in_qty" min="1" step="1" value="1" required></div>
               <div class="field"><label>批次号</label><input type="text" id="in_batch" placeholder="如 B20260826-01"></div>
@@ -246,7 +247,7 @@
           </div>
           <div class="tbl-wrap" id="inWrap">
             <table>
-              <thead><tr><th>入库日期</th><th>型号</th><th>数量</th><th>批次号</th><th>供应商</th><th>单价</th><th>备注</th><th>操作</th></tr></thead>
+              <thead><tr><th>入库日期</th><th>订单号</th><th>型号</th><th>数量</th><th>批次号</th><th>供应商</th><th>单价</th><th>备注</th><th>操作</th></tr></thead>
               <tbody id="inTbody"></tbody>
             </table>
             <div class="empty" id="inEmpty" style="display:none"><span class="ico">📥</span>暂无入库记录</div>
@@ -262,6 +263,7 @@
           <form id="outForm" onsubmit="return false">
             <div class="form-grid">
               <div class="field"><label>出库日期 <span class="req">*</span></label><input type="date" id="out_date" required></div>
+              <div class="field"><label>订单号 <span class="req">*</span></label><input type="text" id="out_order" placeholder="如 CK20260826001" required></div>
               <div class="field"><label>型号 <span class="req">*</span></label><select id="out_model"></select></div>
               <div class="field"><label>数量 <span class="req">*</span></label><input type="number" id="out_qty" min="1" step="1" value="1" required></div>
               <div class="field"><label>领用人 / 部门</label><input type="text" id="out_user" placeholder="如 张三 / 生产部"></div>
@@ -280,7 +282,7 @@
           </div>
           <div class="tbl-wrap" id="outWrap">
             <table>
-              <thead><tr><th>出库日期</th><th>型号</th><th>数量</th><th>领用人/部门</th><th>用途</th><th>备注</th><th>操作</th></tr></thead>
+              <thead><tr><th>出库日期</th><th>订单号</th><th>型号</th><th>数量</th><th>领用人/部门</th><th>用途</th><th>备注</th><th>操作</th></tr></thead>
               <tbody id="outTbody"></tbody>
             </table>
             <div class="empty" id="outEmpty" style="display:none"><span class="ico">📤</span>暂无出库记录</div>
@@ -340,7 +342,7 @@
           </div>
           <div class="tbl-wrap" id="qWrap">
             <table>
-              <thead><tr><th>操作类型</th><th>日期</th><th>型号</th><th>数量</th><th>明细</th><th>备注</th></tr></thead>
+              <thead><tr><th>操作类型</th><th>日期</th><th>订单号</th><th>型号</th><th>数量</th><th>明细</th><th>备注</th></tr></thead>
               <tbody id="qTbody"></tbody>
             </table>
             <div class="empty" id="qEmpty" style="display:none"><span class="ico">🔍</span>无符合条件的记录</div>
@@ -474,6 +476,7 @@ $("inForm").onsubmit = () => {
   const rec = {
     id: inEditId || uid(),
     date: $("in_date").value,
+    orderNo: $("in_order").value.trim(),
     model: modelName($("in_model").value),
     qty: num($("in_qty").value),
     batch: $("in_batch").value.trim(),
@@ -482,6 +485,7 @@ $("inForm").onsubmit = () => {
     note: $("in_note").value.trim()
   };
   if (!rec.date) return toast("请选择入库日期");
+  if (!rec.orderNo) return toast("请填写订单号");
   if (!rec.model) return toast("请选择型号");
   if (rec.qty < 1) return toast("入库数量必须 ≥ 1");
   if (inEditId){
@@ -506,6 +510,7 @@ function editIn(id){
   $("inFormTitle").textContent = "编辑入库记录";
   $("inSave").textContent = "保存修改";
   $("in_date").value = r.date;
+  $("in_order").value = r.orderNo || "";
   const m = models.find(x => x.name === r.model);
   $("in_model").value = m ? m.id : ($("in_model").options[0] && $("in_model").options[0].value);
   $("in_qty").value = r.qty; $("in_batch").value = r.batch || ""; $("in_supplier").value = r.supplier || "";
@@ -529,10 +534,12 @@ function renderIn(){
         <span class="badge b-info">＋${r.qty} 台</span>
       </div>
       <div class="m-grid">
+        <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
         <div><span>批次号</span><i>${esc(r.batch) || "—"}</i></div>
         <div><span>供应商</span><i>${esc(r.supplier) || "—"}</i></div>
         <div><span>单价</span><i>¥${(+r.price || 0).toFixed(2)}</i></div>
         <div><span>数量</span><i><b>${r.qty}</b> 台</i></div>
+        <div><span>入库日期</span><i>${esc(r.date)}</i></div>
         ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
       </div>
       <div class="m-actions">
@@ -544,7 +551,7 @@ function renderIn(){
     wrap.style.display = ""; cards.style.display = "none";
     empty.style.display = inRecs.length ? "none" : "";
     $("inTbody").innerHTML = inRecs.map(r => `<tr>
-      <td>${esc(r.date)}</td><td><b>${esc(r.model)}</b></td><td style="color:var(--blue-d);font-weight:700">＋${r.qty}</td>
+      <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td><td style="color:var(--blue-d);font-weight:700">＋${r.qty}</td>
       <td>${esc(r.batch) || "—"}</td><td>${esc(r.supplier) || "—"}</td><td>¥${(+r.price || 0).toFixed(2)}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
       <td>
@@ -560,6 +567,7 @@ $("outForm").onsubmit = () => {
   const rec = {
     id: outEditId || uid(),
     date: $("out_date").value,
+    orderNo: $("out_order").value.trim(),
     model: modelName($("out_model").value),
     qty: num($("out_qty").value),
     user: $("out_user").value.trim(),
@@ -567,6 +575,7 @@ $("outForm").onsubmit = () => {
     note: $("out_note").value.trim()
   };
   if (!rec.date) return toast("请选择出库日期");
+  if (!rec.orderNo) return toast("请填写订单号");
   if (!rec.model) return toast("请选择型号");
   if (rec.qty < 1) return toast("出库数量必须 ≥ 1");
   const cur = stockOf(rec.model);
@@ -593,6 +602,7 @@ function editOut(id){
   $("outFormTitle").textContent = "编辑出库记录";
   $("outSave").textContent = "保存修改";
   $("out_date").value = r.date;
+  $("out_order").value = r.orderNo || "";
   const m = models.find(x => x.name === r.model);
   $("out_model").value = m ? m.id : ($("out_model").options[0] && $("out_model").options[0].value);
   $("out_qty").value = r.qty; $("out_user").value = r.user || ""; $("out_purpose").value = r.purpose || ""; $("out_note").value = r.note || "";
@@ -615,10 +625,11 @@ function renderOut(){
         <span class="badge b-wait">－${r.qty} 台</span>
       </div>
       <div class="m-grid">
+        <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
         <div><span>领用人/部门</span><i>${esc(r.user) || "—"}</i></div>
         <div><span>数量</span><i><b>${r.qty}</b> 台</i></div>
-        <div><span>用途</span><i>${esc(r.purpose) || "—"}</i></div>
         <div><span>出库日期</span><i>${esc(r.date)}</i></div>
+        <div><span>用途</span><i>${esc(r.purpose) || "—"}</i></div>
         ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
       </div>
       <div class="m-actions">
@@ -630,7 +641,7 @@ function renderOut(){
     wrap.style.display = ""; cards.style.display = "none";
     empty.style.display = outRecs.length ? "none" : "";
     $("outTbody").innerHTML = outRecs.map(r => `<tr>
-      <td>${esc(r.date)}</td><td><b>${esc(r.model)}</b></td><td style="color:var(--amber);font-weight:700">－${r.qty}</td>
+      <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td><td style="color:var(--amber);font-weight:700">－${r.qty}</td>
       <td>${esc(r.user) || "—"}</td><td>${esc(r.purpose) || "—"}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
       <td>
@@ -729,8 +740,8 @@ function resetQuery(){
 function renderQuery(){
   const type = $("q_type").value, m = $("q_model").value, f = $("q_from").value, t = $("q_to").value;
   const rows = [
-    ...inRecs.map(r => ({ kind: "入库", date: r.date, model: r.model, qty: +r.qty, detail: `批次 ${r.batch || "—"} ｜ 供应商 ${r.supplier || "—"} ｜ ¥${(+r.price || 0).toFixed(2)}`, note: r.note || "" })),
-    ...outRecs.map(r => ({ kind: "出库", date: r.date, model: r.model, qty: +r.qty, detail: `领用 ${r.user || "—"} ｜ 用途 ${r.purpose || "—"}`, note: r.note || "" }))
+    ...inRecs.map(r => ({ kind: "入库", date: r.date, orderNo: r.orderNo || "", model: r.model, qty: +r.qty, detail: `批次 ${r.batch || "—"} ｜ 供应商 ${r.supplier || "—"} ｜ ¥${(+r.price || 0).toFixed(2)}`, note: r.note || "" })),
+    ...outRecs.map(r => ({ kind: "出库", date: r.date, orderNo: r.orderNo || "", model: r.model, qty: +r.qty, detail: `领用 ${r.user || "—"} ｜ 用途 ${r.purpose || "—"}`, note: r.note || "" }))
   ].filter(r =>
     (!type || r.kind === type) && (!m || r.model === m) &&
     (!f || r.date >= f) && (!t || r.date <= t)
@@ -745,6 +756,7 @@ function renderQuery(){
         <span class="badge ${r.kind === "入库" ? "b-info" : "b-wait"}">${r.kind} ${r.kind === "入库" ? "＋" : "－"}${r.qty}</span>
       </div>
       <div class="m-grid">
+        <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
         <div><span>明细</span><i>${esc(r.detail)}</i></div>
         ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
       </div>
@@ -754,7 +766,7 @@ function renderQuery(){
     empty.style.display = rows.length ? "none" : "";
     $("qTbody").innerHTML = rows.map(r => `<tr>
       <td><span class="badge ${r.kind === "入库" ? "b-info" : "b-wait"}">${r.kind}</span></td>
-      <td>${esc(r.date)}</td><td><b>${esc(r.model)}</b></td>
+      <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td><b>${esc(r.model)}</b></td>
       <td style="${r.kind === "入库" ? "color:var(--blue-d)" : "color:var(--amber)"};font-weight:700">${r.kind === "入库" ? "＋" : "－"}${r.qty}</td>
       <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.detail)}">${esc(r.detail)}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
@@ -775,18 +787,18 @@ function seedDemo(){
   if ((inRecs.length || outRecs.length) && !confirm("载入示例数据会追加到现有数据，继续？")) return;
   const day = i => { const d = new Date(); d.setDate(d.getDate() - i); return d.toISOString().slice(0, 10); };
   const demoIn = [
-    { date: day(12), model: "XP600", qty: 10, batch: "B260814-01", supplier: "东莞", price: 1280, note: "主用型号备货" },
-    { date: day(8),  model: "3200", qty: 5,  batch: "B260816-02", supplier: "东莞", price: 980,  note: "" },
-    { date: day(5),  model: "3200U1", qty: 4, batch: "B260819-03", supplier: "深圳", price: 1100, note: "新批次" },
-    { date: day(3),  model: "DX7", qty: 3,  batch: "B260821-04", supplier: "东莞", price: 860,  note: "" },
-    { date: day(1),  model: "XP600", qty: 6,  batch: "B260823-05", supplier: "东莞", price: 1280, note: "紧急补货" }
+    { date: day(12), orderNo: "RK260814001", model: "XP600", qty: 10, batch: "B260814-01", supplier: "东莞", price: 1280, note: "主用型号备货" },
+    { date: day(8),  orderNo: "RK260816002", model: "3200", qty: 5,  batch: "B260816-02", supplier: "东莞", price: 980,  note: "" },
+    { date: day(5),  orderNo: "RK260819003", model: "3200U1", qty: 4, batch: "B260819-03", supplier: "深圳", price: 1100, note: "新批次" },
+    { date: day(3),  orderNo: "RK260821004", model: "DX7", qty: 3,  batch: "B260821-04", supplier: "东莞", price: 860,  note: "" },
+    { date: day(1),  orderNo: "RK260823005", model: "XP600", qty: 6,  batch: "B260823-05", supplier: "东莞", price: 1280, note: "紧急补货" }
   ].map(r => ({ id: uid(), ...r }));
   const demoOut = [
-    { date: day(10), model: "XP600", qty: 3, user: "张三 / 生产部", purpose: "更换维修", note: "" },
-    { date: day(7),  model: "3200", qty: 2,  user: "李四 / 售后部", purpose: "客户返修", note: "旧头回收" },
-    { date: day(4),  model: "XP600", qty: 4, user: "王五 / 生产部", purpose: "装机", note: "" },
-    { date: day(2),  model: "1600", qty: 1,  user: "赵六 / 生产部", purpose: "试验", note: "测试用" },
-    { date: day(0),  model: "DX7", qty: 2,   user: "生产部", purpose: "更换维修", note: "" }
+    { date: day(10), orderNo: "CK260810101", model: "XP600", qty: 3, user: "张三 / 生产部", purpose: "更换维修", note: "" },
+    { date: day(7),  orderNo: "CK260807102", model: "3200", qty: 2,  user: "李四 / 售后部", purpose: "客户返修", note: "旧头回收" },
+    { date: day(4),  orderNo: "CK260804103", model: "XP600", qty: 4, user: "王五 / 生产部", purpose: "装机", note: "" },
+    { date: day(2),  orderNo: "CK260802104", model: "1600", qty: 1,  user: "赵六 / 生产部", purpose: "试验", note: "测试用" },
+    { date: day(0),  orderNo: "CK260826105", model: "DX7", qty: 2,   user: "生产部", purpose: "更换维修", note: "" }
   ].map(r => ({ id: uid(), ...r }));
   inRecs = [...demoIn, ...inRecs];
   outRecs = [...demoOut, ...outRecs];
