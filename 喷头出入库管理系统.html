@@ -90,6 +90,18 @@
   .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(20px);background:#1a2233;color:#fff;padding:12px 22px;border-radius:12px;font-size:.86rem;box-shadow:0 8px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:999;max-width:90vw}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* ===== 弹窗 ===== */
+  .mask{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:.18s;padding:20px}
+  .mask.on{opacity:1;pointer-events:auto}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:min(640px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);transform:translateY(8px);transition:.18s}
+  .mask.on .modal{transform:none}
+  .modal-h{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+  .modal-h h3{font-size:1rem;font-weight:800}
+  .modal-h .x{border:none;background:var(--line2);width:32px;height:32px;border-radius:9px;font-size:.9rem;cursor:pointer;color:var(--ink2)}
+  .modal-b{padding:20px}
+  .scan-tip{font-size:.82rem;color:var(--ink2);text-align:center;margin:14px 2px 4px;line-height:1.6}
+  .scan-tip.err{color:var(--red)}
+
   /* 筛选条 */
   .filter-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
   .filter-bar .field{flex:1 1 150px}
@@ -195,6 +207,7 @@
         <div class="crumb" id="pageCrumb">喷头各型号实时库存与预警</div>
       </div>
       <div class="tb-act">
+        <button class="btn btn-ghost btn-sm" onclick="openCloud()">☁️ <span id="cloudState">本地</span></button>
         <button class="btn btn-ghost btn-sm" id="lowState" onclick="switchTab('v1')">⚠️ 库存预警</button>
         <button class="btn btn-ghost btn-sm" onclick="seedDemo()">📋 载入示例</button>
       </div>
@@ -364,6 +377,33 @@
   <button class="nav-tab" data-v="v5"><span class="bi">🔍</span><span>查询</span></button>
 </nav>
 
+<!-- 云端同步设置 -->
+<div class="mask" id="cloudMask">
+  <div class="modal">
+    <div class="modal-h"><h3>云端同步设置</h3><button class="x" onclick="closeCloud()">✕</button></div>
+    <div class="modal-b">
+      <div class="info-strip">启用后喷头数据保存在你的 GitHub 仓库（跨设备同步，与熨斗台账数据隔离）。Token 需有 repo 权限且仓库须已存在；Token 仅存于本机浏览器。</div>
+      <div class="field" style="margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="c_enabled" style="width:18px;height:18px"> 启用云端同步（跨设备）
+        </label>
+      </div>
+      <div class="form-grid">
+        <div class="field full"><label>GitHub Token（需 repo 权限）</label><input type="password" id="c_token" placeholder="ghp_xxx 或个人访问令牌" autocomplete="off"></div>
+        <div class="field full"><label>仓库（owner/repo）</label><input type="text" id="c_repo" placeholder="1625804272/iron-returns"></div>
+        <div class="field full"><label>数据文件路径</label><input type="text" id="c_path" placeholder="data/printhead.json"></div>
+      </div>
+      <p class="scan-tip" id="cloudMsg" style="margin-top:12px"></p>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="clearCloudCfg()">清除配置</button>
+        <button class="btn btn-ghost" onclick="closeCloud()">关闭</button>
+        <button class="btn btn-green" onclick="cloudSyncNow()">立即同步</button>
+        <button class="btn btn-pri" onclick="saveCloudSettingsUI()">保存并连接</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -371,6 +411,9 @@
 const LS_MODELS = "ph_models_v1", LS_IN = "ph_in_v1", LS_OUT = "ph_out_v1";
 const DEFAULT_MODELS = ["XP600","3200","1600","3200U1","3200八柱","DX7"];
 const DEFAULT_THRESHOLD = 5;
+/* 云端同步配置（声明提前：saveModels 等顶层调用 schedulePush 时需要） */
+let cloudCfg = { enabled:false, token:"", owner:"1625804272", repo:"iron-returns", path:"data/printhead.json", sha:null };
+let pushTimer = null, pushRetry = 0;
 
 let models = load(LS_MODELS, null);
 if (!models){
@@ -381,9 +424,9 @@ let inRecs = load(LS_IN, []);
 let outRecs = load(LS_OUT, []);
 
 function load(key, fallback){ try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch(e){ return fallback; } }
-function saveModels(){ localStorage.setItem(LS_MODELS, JSON.stringify(models)); }
-function saveIn(){ localStorage.setItem(LS_IN, JSON.stringify(inRecs)); }
-function saveOut(){ localStorage.setItem(LS_OUT, JSON.stringify(outRecs)); }
+function saveModels(){ localStorage.setItem(LS_MODELS, JSON.stringify(models)); schedulePush(); }
+function saveIn(){ localStorage.setItem(LS_IN, JSON.stringify(inRecs)); schedulePush(); }
+function saveOut(){ localStorage.setItem(LS_OUT, JSON.stringify(outRecs)); schedulePush(); }
 
 const $ = id => document.getElementById(id);
 const isMobile = () => window.matchMedia("(max-width:760px)").matches;
@@ -806,11 +849,190 @@ function seedDemo(){
   toast("示例数据已载入");
 }
 
+/* ================= 云端同步（GitHub 仓库，跨设备，与熨斗台账数据隔离） ================= */
+const LS_CLOUD = "ph_cloud_v1";
+function loadCloudSettings(){
+  try { const s = JSON.parse(localStorage.getItem(LS_CLOUD)); if (s) cloudCfg = Object.assign(cloudCfg, s); } catch(e){}
+}
+function saveCloudSettings(){ localStorage.setItem(LS_CLOUD, JSON.stringify(cloudCfg)); }
+function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64dec(b64){ return decodeURIComponent(escape(atob(b64))); }
+function ghHeaders(){ const h = { "Accept":"application/vnd.github+json" }; if (cloudCfg.token) h["Authorization"] = "Bearer " + cloudCfg.token; return h; }
+function ghApiUrl(path){
+  const p = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+  return `https://api.github.com/repos/${encodeURIComponent(cloudCfg.owner)}/${encodeURIComponent(cloudCfg.repo)}/contents/${p}`;
+}
+function cloudActive(){ return !!(cloudCfg.enabled && cloudCfg.token && cloudCfg.owner && cloudCfg.repo); }
+function updateCloudChip(state){ const el = $("cloudState"); if (!el) return; el.textContent = state || (cloudActive() ? "云端" : "本地"); }
+function cloudMsg(txt, err){ const el = $("cloudMsg"); if (!el) return; el.textContent = txt; el.className = "scan-tip" + (err ? " err" : ""); }
+function apiErr(e){
+  if (!e) return "未知错误";
+  const s = e.status;
+  if (s === 401) return "Token 无效或已过期（401）";
+  if (s === 403) return "Token 无权访问该仓库或触发限流（403）";
+  if (s === 404) return "仓库不存在或无访问权限，请检查 owner/repo 与 Token 权限（404）";
+  return e.message || String(e);
+}
+function persistLocal(){
+  localStorage.setItem(LS_MODELS, JSON.stringify(models));
+  localStorage.setItem(LS_IN, JSON.stringify(inRecs));
+  localStorage.setItem(LS_OUT, JSON.stringify(outRecs));
+}
+function schedulePush(){
+  if (!cloudActive()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { updateCloudChip("同步中"); pushCloud(); }, 700);
+}
+function mergeCloud(cloud){
+  const mm = new Map();
+  (cloud.models||[]).forEach(m => mm.set(m.id, m)); models.forEach(m => mm.set(m.id, m)); models = [...mm.values()];
+  const m1 = new Map();
+  (cloud.inRecs||[]).forEach(r => m1.set(r.id, r)); inRecs.forEach(r => m1.set(r.id, r)); inRecs = [...m1.values()];
+  const m2 = new Map();
+  (cloud.outRecs||[]).forEach(r => m2.set(r.id, r)); outRecs.forEach(r => m2.set(r.id, r)); outRecs = [...m2.values()];
+}
+/* 验证 Token：成功返回 {ok:true, login}；失败返回 {ok:false, error} */
+function verifyToken(token){
+  return fetch("https://api.github.com/user", { headers:{ "Accept":"application/vnd.github+json", "Authorization":"Bearer " + token } })
+    .then(r => {
+      if (r.status === 401){ const e = new Error("401"); e.status = 401; throw e; }
+      if (!r.ok){ const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+      return r.json();
+    })
+    .then(u => ({ ok:true, login:u.login || "" }))
+    .catch(e => ({ ok:false, error:apiErr(e) }));
+}
+/* 拉取并合并云端数据：成功返回 {ok:true, exists}；失败返回 {ok:false, error} */
+function pullCloud(){
+  if (!cloudActive()) return Promise.resolve({ ok:true, skipped:true });
+  updateCloudChip("同步中");
+  return fetch(ghApiUrl(cloudCfg.path), { headers: ghHeaders() })
+    .then(r => {
+      if (r.status === 404) return null;
+      if (!r.ok){ const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+      return r.json();
+    })
+    .then(j => {
+      if (!j){ cloudCfg.sha = null; saveCloudSettings(); return { ok:true, exists:false }; }
+      try { mergeCloud(JSON.parse(b64dec(j.content))); }
+      catch(e){ const x = new Error("云端数据解析失败，可能是格式损坏"); x.status = 0; throw x; }
+      cloudCfg.sha = j.sha; saveCloudSettings();
+      persistLocal();
+      updateCloudChip("已同步");
+      return { ok:true, exists:true };
+    })
+    .catch(e => { updateCloudChip("拉取失败"); console.warn("pullCloud:", e); return { ok:false, error:apiErr(e) }; });
+}
+/* 推送本地数据到云端：成功返回 {ok:true}；失败返回 {ok:false, error} */
+function pushCloud(){
+  if (!cloudActive()) return Promise.resolve({ ok:true, skipped:true });
+  updateCloudChip("同步中");
+  const payload = { app:"printhead", version:1, savedAt:new Date().toISOString(), models, inRecs, outRecs };
+  const content = b64enc(JSON.stringify(payload));
+  const headers = ghHeaders(); headers["Content-Type"] = "application/json";
+  const body = { message:"sync printhead data", content, committer:{ name:"printhead-app", email:"app@local" } };
+  return fetch(ghApiUrl(cloudCfg.path), { headers })
+    .then(r => r.status === 404 ? null : (r.ok ? r.json() : Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status }))))
+    .then(j => { if (j) body.sha = j.sha; return fetch(ghApiUrl(cloudCfg.path), { method:"PUT", headers, body: JSON.stringify(body) }); })
+    .then(r => { if (!r.ok) return Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status })); return r.json(); })
+    .then(j => {
+      cloudCfg.sha = (j.content && j.content.sha) || cloudCfg.sha; saveCloudSettings();
+      pushRetry = 0; updateCloudChip("已同步"); return { ok:true };
+    })
+    .catch(e => {
+      console.warn("pushCloud:", e);
+      if (cloudActive() && pushRetry < 3){ pushRetry++; updateCloudChip("同步失败·自动重试中"); pushTimer = setTimeout(() => pushCloud(), 15000); }
+      else { pushRetry = 0; updateCloudChip("同步失败"); }
+      return { ok:false, error:apiErr(e) };
+    });
+}
+function initCloud(){
+  loadCloudSettings();
+  if (cloudActive()){
+    pullCloud().then(res => {
+      if (res.ok && !res.exists) return pushCloud();
+      if (!res.ok) updateCloudChip("拉取失败");
+      return res;
+    }).finally(() => {
+      fillModelSelects(); renderStock(); renderIn(); renderOut(); renderModelMgr(); renderQuery(); updateSideMini();
+    });
+  } else {
+    updateCloudChip("本地");
+  }
+}
+function openCloud(){
+  loadCloudSettings();
+  $("c_enabled").checked = !!cloudCfg.enabled;
+  $("c_token").value = cloudCfg.token || "";
+  $("c_repo").value = cloudCfg.owner + "/" + cloudCfg.repo;
+  $("c_path").value = cloudCfg.path;
+  cloudMsg("");
+  $("cloudMask").classList.add("on");
+}
+function closeCloud(){ $("cloudMask").classList.remove("on"); }
+function clearCloudCfg(){
+  if (!confirm("停用云端同步并清除本机保存的 Token 配置？\n本地数据不会删除，云端数据保留在仓库中。")) return;
+  cloudCfg = { enabled:false, token:"", owner:"1625804272", repo:"iron-returns", path:"data/printhead.json", sha:null };
+  saveCloudSettings();
+  $("c_enabled").checked = false; $("c_token").value = ""; $("c_repo").value = "1625804272/iron-returns"; $("c_path").value = "data/printhead.json";
+  updateCloudChip("本地"); cloudMsg("已停用云端同步，Token 已清除"); toast("云端配置已清除");
+}
+function readCloudForm(){
+  const repo = $("c_repo").value.trim();
+  const mm = repo.match(/^([^/]+)\/(.+)$/);
+  const token = $("c_token").value.trim();
+  if (!mm) return { ok:false, err:"仓库格式应为 owner/repo（如 1625804272/iron-returns）" };
+  if (!token) return { ok:false, err:"请填写 GitHub Token" };
+  return { ok:true, enabled:$("c_enabled").checked, token, owner:mm[1].trim(), repo:mm[2].trim(), path:$("c_path").value.trim() || "data/printhead.json" };
+}
+function saveCloudSettingsUI(){
+  const f = readCloudForm();
+  if (!f.ok){ cloudMsg(f.err, true); return; }
+  cloudCfg.enabled = f.enabled; cloudCfg.token = f.token; cloudCfg.owner = f.owner; cloudCfg.repo = f.repo; cloudCfg.path = f.path;
+  saveCloudSettings();
+  if (!f.enabled){ updateCloudChip("本地"); cloudMsg("已保存（未启用同步，勾选启用后再保存即可连接）"); toast("云端设置已保存"); return; }
+  cloudMsg("正在验证 Token 并连接……");
+  verifyToken(f.token).then(vr => {
+    if (!vr.ok){ cloudMsg("Token 验证失败：" + vr.error, true); updateCloudChip("验证失败"); return; }
+    pullCloud().then(pr => {
+      if (!pr.ok){ cloudMsg("连接失败：" + pr.error, true); updateCloudChip("拉取失败"); return; }
+      pushCloud().then(ps => {
+        if (!ps.ok){ cloudMsg("保存成功，但推送失败：" + ps.error, true); updateCloudChip("同步失败"); return; }
+        fillModelSelects(); renderStock(); renderIn(); renderOut(); renderModelMgr(); renderQuery(); updateSideMini();
+        cloudMsg("连接成功 ✅ GitHub 账号 " + vr.login + "，数据已与云端合并");
+        toast("云端同步已开启");
+      });
+    });
+  });
+}
+function cloudSyncNow(){
+  const f = readCloudForm();
+  if (!f.ok){ cloudMsg(f.err, true); return; }
+  if (!f.enabled){ cloudMsg("请先勾选「启用云端同步」再执行同步", true); return; }
+  cloudCfg.enabled = true; cloudCfg.token = f.token; cloudCfg.owner = f.owner; cloudCfg.repo = f.repo; cloudCfg.path = f.path;
+  saveCloudSettings();
+  cloudMsg("正在验证 Token……");
+  verifyToken(f.token).then(vr => {
+    if (!vr.ok){ cloudMsg("Token 验证失败：" + vr.error, true); updateCloudChip("验证失败"); return; }
+    cloudMsg("正在同步（拉取 → 合并 → 推送）……");
+    pullCloud().then(pr => {
+      if (!pr.ok){ cloudMsg("拉取失败：" + pr.error, true); updateCloudChip("拉取失败"); return; }
+      pushCloud().then(ps => {
+        if (!ps.ok){ cloudMsg("推送失败：" + ps.error, true); updateCloudChip("同步失败"); return; }
+        fillModelSelects(); renderStock(); renderIn(); renderOut(); renderModelMgr(); renderQuery(); updateSideMini();
+        cloudMsg("同步完成 ✅ " + vr.login + "，本地 ↔ 云端数据一致");
+        updateCloudChip("已同步"); toast("同步完成");
+      });
+    });
+  });
+}
+
 /* ================= 启动 ================= */
 fillModelSelects();
 resetInForm(); resetOutForm();
 renderStock(); renderIn(); renderOut(); renderModelMgr(); renderQuery();
 updateSideMini();
+initCloud();
 
 /* 响应式：旋转/尺寸变化重绘 */
 let _rsTm = null;
