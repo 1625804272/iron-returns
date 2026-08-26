@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>喷头出入库管理系统</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --line:#e9ecf3; --line2:#f1f4f9;
+    --ink:#1a2233; --ink2:#5a6478; --ink3:#95a0b4;
+    --blue:#2563eb; --blue-d:#1d4ed8; --blue-bg:#eef3ff;
+    --red:#e23b3b; --red-bg:#fdf0f0;
+    --green:#15a34a; --green-bg:#eefaf1;
+    --amber:#d97706; --amber-bg:#fdf6ec;
+    --side-bg:#11192e; --side-bg2:#0c1322; --side-ink:#aab4c8; --side-on:#ffffff;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px -6px rgba(16,24,40,.10);
+    --r:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{font-size:15px;scroll-behavior:smooth}
+  body{font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  button,.btn,input,select,textarea{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  @media(prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
+
+  /* ===== 布局 ===== */
+  .app{display:flex;min-height:100vh}
+  .side{width:248px;background:linear-gradient(180deg,var(--side-bg),var(--side-bg2));color:var(--side-ink);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0}
+  .brand{display:flex;align-items:center;gap:13px;padding:22px 22px 18px}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0ea5e9,#6366f1);
+    display:flex;align-items:center;justify-content:center;font-size:21px;box-shadow:0 6px 16px rgba(14,165,233,.4)}
+  .brand h1{font-size:1.02rem;font-weight:700;color:#fff;letter-spacing:.3px;line-height:1.3}
+  .brand p{font-size:.7rem;color:#7d8aa3;margin-top:3px}
+  .side-nav{display:flex;flex-direction:column;gap:4px;padding:8px 14px}
+  .side-nav button{display:flex;align-items:center;gap:13px;border:none;background:transparent;color:var(--side-ink);
+    padding:13px 16px;border-radius:11px;font-size:.92rem;font-weight:600;cursor:pointer;text-align:left;transition:.15s}
+  .side-nav button:hover{background:rgba(255,255,255,.06);color:#dbe3f1}
+  .side-nav button.on{background:linear-gradient(90deg,rgba(37,99,235,.25),rgba(37,99,235,.08));color:#fff}
+  .side-nav button .ic{width:20px;text-align:center}
+  .side-mini{margin-top:auto;padding:16px 22px 20px;border-top:1px solid rgba(255,255,255,.07);font-size:.78rem}
+  .side-mini .sm-row{display:flex;justify-content:space-between;padding:4px 0;color:#8b98b3}
+  .side-mini .sm-row b{color:#fff;font-weight:700}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:18px 26px 6px}
+  .topbar h2{font-size:1.22rem;font-weight:800;letter-spacing:.2px}
+  .topbar .crumb{font-size:.78rem;color:var(--ink3);margin-top:3px}
+  .tb-act{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .content{flex:1;padding:18px 26px 40px}
+
+  /* ===== 通用组件 ===== */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-bottom:18px}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .section{font-size:1rem;font-weight:800;display:flex;align-items:center;gap:9px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);display:inline-block}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:10px;padding:10px 18px;font-size:.88rem;font-weight:700;cursor:pointer;transition:.15s;line-height:1.2}
+  .btn-pri{background:var(--blue);color:#fff}
+  .btn-pri:hover{background:var(--blue-d)}
+  .btn-ghost{background:#f1f4f9;color:var(--ink)}
+  .btn-ghost:hover{background:#e6ebf3}
+  .btn-green{background:var(--green);color:#fff}
+  .btn-green:hover{background:#12843c}
+  .btn-danger{background:var(--red);color:#fff}
+  .btn-danger:hover{background:#c22e2e}
+  .btn-danger-ghost{background:var(--red-bg);color:var(--red)}
+  .btn-sm{padding:6px 12px;font-size:.8rem;border-radius:8px}
+  .btn:active{transform:scale(.97)}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:.8rem;font-weight:700;color:var(--ink2)}
+  .field label .req{color:var(--red)}
+  .field input,.field select,.field textarea{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;font-family:inherit;background:#fff;color:var(--ink);width:100%;min-height:42px;outline:none;transition:.15s}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .field textarea{min-height:70px;resize:vertical}
+  .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .info-strip{background:var(--blue-bg);border:1px solid #d6e3ff;border-radius:11px;padding:13px 17px;font-size:.86rem;color:var(--ink2);line-height:1.7;margin-bottom:16px}
+
+  .tbl-wrap{overflow-x:auto;width:100%}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:640px}
+  thead th{background:#f8fafd;color:var(--ink2);font-weight:700;text-align:left;padding:11px 12px;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0}
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line2);white-space:nowrap}
+  tbody tr:hover{background:#fafbfe}
+  .badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 11px;font-size:.76rem;font-weight:700}
+  .b-ok{background:var(--green-bg);color:var(--green)}
+  .b-bad{background:var(--red-bg);color:var(--red)}
+  .b-wait{background:var(--amber-bg);color:var(--amber)}
+  .b-info{background:var(--blue-bg);color:var(--blue-d)}
+  .empty{padding:34px 10px;text-align:center;color:var(--ink3);font-size:.88rem}
+  .empty .ico{font-size:1.6rem;display:block;margin-bottom:8px}
+  .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(20px);background:#1a2233;color:#fff;padding:12px 22px;border-radius:12px;font-size:.86rem;box-shadow:0 8px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:999;max-width:90vw}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* 筛选条 */
+  .filter-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+  .filter-bar .field{flex:1 1 150px}
+  .filter-bar .field.grow{flex:2 1 220px}
+
+  /* 统计卡片 */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;gap:14px;align-items:center;box-shadow:var(--shadow)}
+  .stat .ic{width:46px;height:46px;border-radius:12px;background:var(--ci);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+  .stat .meta{min-width:0}
+  .stat .lbl{font-size:.78rem;color:var(--ink3);font-weight:600}
+  .stat .num{font-size:1.7rem;font-weight:800;color:var(--c);line-height:1.15}
+  .stat .sub{font-size:.74rem;color:var(--ink3);margin-top:2px}
+
+  /* 库存卡片 */
+  .stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .stock-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .stock-card.low{border-color:#f3c1c1;background:linear-gradient(180deg,#fff,var(--red-bg))}
+  .stock-card .sc-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .stock-card .sc-name{font-size:1.06rem;font-weight:800}
+  .stock-card .sc-num{font-size:2rem;font-weight:800;color:var(--blue-d);line-height:1.1}
+  .stock-card.low .sc-num{color:var(--red)}
+  .stock-card .sc-meta{display:flex;justify-content:space-between;font-size:.76rem;color:var(--ink3);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line2)}
+  .stock-card .sc-bar{height:6px;border-radius:4px;background:var(--line2);margin-top:10px;overflow:hidden}
+  .stock-card .sc-bar i{display:block;height:100%;border-radius:4px;background:var(--green);transition:width .3s}
+  .stock-card.low .sc-bar i{background:var(--red)}
+
+  /* 底部导航（移动端） */
+  .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);z-index:100;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .bottom-nav button{flex:1;border:none;background:transparent;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.68rem;color:var(--ink3);cursor:pointer;font-weight:600}
+  .bottom-nav button .bi{font-size:1.3rem}
+  .bottom-nav button.on{color:var(--blue)}
+
+  .view{display:none}
+  .view.on{display:block;animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* 移动端卡片列表 */
+  .m-list{display:none}
+  @media(max-width:760px){
+    .m-list{display:flex;flex-direction:column;gap:11px}
+    .m-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 14px;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+    .m-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .m-t{font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.45;min-width:0}
+    .m-t b{color:var(--blue);font-size:1.05rem}
+    .m-t span{color:var(--ink2);font-weight:500}
+    .m-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+    .m-grid>div{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line2);font-size:.84rem;min-width:0}
+    .m-grid>div span{color:var(--ink3);flex-shrink:0}
+    .m-grid>div i{font-style:normal;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .m-grid>div.full{grid-column:1/-1}
+    .m-grid>div.full i{white-space:normal;text-align:left;word-break:break-all}
+    .m-actions{display:flex;gap:9px;margin-top:12px}
+    .m-actions .btn{flex:1;justify-content:center;min-height:42px}
+  }
+  @media(max-width:760px){
+    .side{display:none}
+    .bottom-nav{display:flex}
+    .topbar{padding:16px 16px 4px}
+    .content{padding:14px 14px 90px}
+    .card{padding:16px}
+    .stat-grid{grid-template-columns:1fr 1fr}
+    .stat{padding:13px 14px}
+    .stat .num{font-size:1.35rem}
+    .stock-grid{grid-template-columns:1fr}
+    .filter-bar .field{flex:1 1 45%}
+  }
+  @media(max-width:380px){
+    .stat-grid{grid-template-columns:1fr}
+    .filter-bar .field{flex:1 1 100%}
+    .form-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 侧边栏 -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">🖨️</div>
+      <div><h1>喷头出入库</h1><p>打印头库存管理系统</p></div>
+    </div>
+    <nav class="side-nav">
+      <button class="nav-tab on" data-v="v1"><span class="ic">📦</span>库存概览</button>
+      <button class="nav-tab" data-v="v2"><span class="ic">⬇️</span>入库管理</button>
+      <button class="nav-tab" data-v="v3"><span class="ic">⬆️</span>出库管理</button>
+      <button class="nav-tab" data-v="v4"><span class="ic">🏷️</span>型号管理</button>
+      <button class="nav-tab" data-v="v5"><span class="ic">🔍</span>记录查询</button>
+    </nav>
+    <div class="side-mini">
+      <div class="sm-row"><span>型号总数</span><b id="sm_models">0</b></div>
+      <div class="sm-row"><span>在库总量</span><b id="sm_total">0</b></div>
+      <div class="sm-row"><span>库存不足</span><b id="sm_low" style="color:#f87171">0</b></div>
+    </div>
+  </aside>
+
+  <!-- 主区域 -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h2 id="pageTitle">库存概览</h2>
+        <div class="crumb" id="pageCrumb">喷头各型号实时库存与预警</div>
+      </div>
+      <div class="tb-act">
+        <button class="btn btn-ghost btn-sm" id="lowState" onclick="switchTab('v1')">⚠️ 库存预警</button>
+        <button class="btn btn-ghost btn-sm" onclick="seedDemo()">📋 载入示例</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== 视图1：库存概览 ===== -->
+      <section id="v1" class="view on">
+        <div class="stat-grid">
+          <div class="stat" style="--c:#2563eb;--ci:#eef3ff"><div class="ic">🏷️</div><div class="meta"><div class="lbl">喷头型号</div><div class="num" id="st_models">0</div><div class="sub" id="st_models_n">个在管型号</div></div></div>
+          <div class="stat" style="--c:#0ea5e9;--ci:#ecfbff"><div class="ic">📦</div><div class="meta"><div class="lbl">在库总量</div><div class="num" id="st_total">0</div><div class="sub" id="st_total_n">台喷头</div></div></div>
+          <div class="stat" style="--c:#15a34a;--ci:#eefaf1"><div class="ic">⬇️</div><div class="meta"><div class="lbl">累计入库</div><div class="num" id="st_in">0</div><div class="sub" id="st_in_n">台</div></div></div>
+          <div class="stat" style="--c:#d97706;--ci:#fdf6ec"><div class="ic">⬆️</div><div class="meta"><div class="lbl">累计出库</div><div class="num" id="st_out">0</div><div class="sub" id="st_out_n">台</div></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>各型号实时库存 <span style="color:var(--ink3);font-weight:400;font-size:.8rem" id="stockTip"></span></h2>
+            <button class="btn btn-pri btn-sm" onclick="switchTab('v2')">＋ 快速入库</button>
+          </div>
+          <div class="stock-grid" id="stockGrid"></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图2：入库管理 ===== -->
+      <section id="v2" class="view">
+        <div class="card">
+          <h2 class="section" style="margin-bottom:16px"><span class="dot"></span><span id="inFormTitle">喷头入库登记</span></h2>
+          <form id="inForm" onsubmit="return false">
+            <div class="form-grid">
+              <div class="field"><label>入库日期 <span class="req">*</span></label><input type="date" id="in_date" required></div>
+              <div class="field"><label>型号 <span class="req">*</span></label><select id="in_model"></select></div>
+              <div class="field"><label>数量 <span class="req">*</span></label><input type="number" id="in_qty" min="1" step="1" value="1" required></div>
+              <div class="field"><label>批次号</label><input type="text" id="in_batch" placeholder="如 B20260826-01"></div>
+              <div class="field"><label>供应商</label><input type="text" id="in_supplier" placeholder="如 东莞"></div>
+              <div class="field"><label>单价（¥）</label><input type="number" id="in_price" min="0" step="0.01" placeholder="0.00"></div>
+              <div class="field full"><label>备注</label><input type="text" id="in_note" placeholder="选填"></div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="inReset" onclick="resetInForm()">清空</button>
+              <button type="submit" class="btn btn-pri" id="inSave">确认入库</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>入库记录 <span style="color:var(--ink3);font-weight:400;font-size:.8rem" id="inCount"></span></h2>
+          </div>
+          <div class="tbl-wrap" id="inWrap">
+            <table>
+              <thead><tr><th>入库日期</th><th>型号</th><th>数量</th><th>批次号</th><th>供应商</th><th>单价</th><th>备注</th><th>操作</th></tr></thead>
+              <tbody id="inTbody"></tbody>
+            </table>
+            <div class="empty" id="inEmpty" style="display:none"><span class="ico">📥</span>暂无入库记录</div>
+          </div>
+          <div class="m-list" id="inCards" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图3：出库管理 ===== -->
+      <section id="v3" class="view">
+        <div class="card">
+          <h2 class="section" style="margin-bottom:16px"><span class="dot"></span><span id="outFormTitle">喷头出库登记</span></h2>
+          <form id="outForm" onsubmit="return false">
+            <div class="form-grid">
+              <div class="field"><label>出库日期 <span class="req">*</span></label><input type="date" id="out_date" required></div>
+              <div class="field"><label>型号 <span class="req">*</span></label><select id="out_model"></select></div>
+              <div class="field"><label>数量 <span class="req">*</span></label><input type="number" id="out_qty" min="1" step="1" value="1" required></div>
+              <div class="field"><label>领用人 / 部门</label><input type="text" id="out_user" placeholder="如 张三 / 生产部"></div>
+              <div class="field"><label>用途</label><input type="text" id="out_purpose" placeholder="如 更换维修"></div>
+              <div class="field full"><label>备注</label><input type="text" id="out_note" placeholder="选填"></div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" onclick="resetOutForm()">清空</button>
+              <button type="submit" class="btn btn-pri" id="outSave">确认出库</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>出库记录 <span style="color:var(--ink3);font-weight:400;font-size:.8rem" id="outCount"></span></h2>
+          </div>
+          <div class="tbl-wrap" id="outWrap">
+            <table>
+              <thead><tr><th>出库日期</th><th>型号</th><th>数量</th><th>领用人/部门</th><th>用途</th><th>备注</th><th>操作</th></tr></thead>
+              <tbody id="outTbody"></tbody>
+            </table>
+            <div class="empty" id="outEmpty" style="display:none"><span class="ico">📤</span>暂无出库记录</div>
+          </div>
+          <div class="m-list" id="outCards" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图4：型号管理 ===== -->
+      <section id="v4" class="view">
+        <div class="card">
+          <h2 class="section" style="margin-bottom:16px"><span class="dot"></span><span id="modelFormTitle">新增喷头型号</span></h2>
+          <form id="modelForm" onsubmit="return false">
+            <div class="form-grid">
+              <div class="field"><label>型号名称 <span class="req">*</span></label><input type="text" id="m_name" placeholder="如 XP600" required></div>
+              <div class="field"><label>库存预警阈值（台）</label><input type="number" id="m_threshold" min="0" step="1" value="5"></div>
+              <div class="field full"><label>说明</label><input type="text" id="m_note" placeholder="选填"></div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" onclick="resetModelForm()">清空</button>
+              <button type="submit" class="btn btn-pri" id="modelSave">新增型号</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>在管型号 <span style="color:var(--ink3);font-weight:400;font-size:.8rem" id="modelCount"></span></h2>
+          </div>
+          <div class="tbl-wrap" id="modelWrap">
+            <table>
+              <thead><tr><th>型号</th><th>预警阈值</th><th>当前库存</th><th>说明</th><th>操作</th></tr></thead>
+              <tbody id="modelTbody"></tbody>
+            </table>
+            <div class="empty" id="modelEmpty" style="display:none"><span class="ico">🏷️</span>暂无型号</div>
+          </div>
+          <div class="m-list" id="modelCards" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图5：记录查询 ===== -->
+      <section id="v5" class="view">
+        <div class="card" style="padding-bottom:16px">
+          <h2 class="section" style="margin-bottom:16px"><span class="dot"></span>出入库记录查询</h2>
+          <div class="filter-bar" style="margin-bottom:0">
+            <div class="field"><label>操作类型</label>
+              <select id="q_type" onchange="renderQuery()"><option value="">全部</option><option>入库</option><option>出库</option></select>
+            </div>
+            <div class="field"><label>型号</label><select id="q_model" onchange="renderQuery()"><option value="">全部</option></select></div>
+            <div class="field"><label>开始日期</label><input type="date" id="q_from" onchange="renderQuery()"></div>
+            <div class="field"><label>结束日期</label><input type="date" id="q_to" onchange="renderQuery()"></div>
+            <button class="btn btn-ghost" onclick="resetQuery()">重置</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>查询结果 <span style="color:var(--ink3);font-weight:400;font-size:.8rem" id="qCount"></span></h2>
+          </div>
+          <div class="tbl-wrap" id="qWrap">
+            <table>
+              <thead><tr><th>操作类型</th><th>日期</th><th>型号</th><th>数量</th><th>明细</th><th>备注</th></tr></thead>
+              <tbody id="qTbody"></tbody>
+            </table>
+            <div class="empty" id="qEmpty" style="display:none"><span class="ico">🔍</span>无符合条件的记录</div>
+          </div>
+          <div class="m-list" id="qCards" style="display:none"></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- 移动端底部导航 -->
+<nav class="bottom-nav">
+  <button class="nav-tab on" data-v="v1"><span class="bi">📦</span><span>库存</span></button>
+  <button class="nav-tab" data-v="v2"><span class="bi">⬇️</span><span>入库</span></button>
+  <button class="nav-tab" data-v="v3"><span class="bi">⬆️</span><span>出库</span></button>
+  <button class="nav-tab" data-v="v4"><span class="bi">🏷️</span><span>型号</span></button>
+  <button class="nav-tab" data-v="v5"><span class="bi">🔍</span><span>查询</span></button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 数据层（独立 localStorage，与熨斗台账完全隔离） ================= */
+const LS_MODELS = "ph_models_v1", LS_IN = "ph_in_v1", LS_OUT = "ph_out_v1";
+const DEFAULT_MODELS = ["XP600","3200","1600","3200U1","3200八柱","DX7"];
+const DEFAULT_THRESHOLD = 5;
+
+let models = load(LS_MODELS, null);
+if (!models){
+  models = DEFAULT_MODELS.map((n, i) => ({ id: "m" + i, name: n, threshold: DEFAULT_THRESHOLD, note: "" }));
+  saveModels();
+}
+let inRecs = load(LS_IN, []);
+let outRecs = load(LS_OUT, []);
+
+function load(key, fallback){ try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch(e){ return fallback; } }
+function saveModels(){ localStorage.setItem(LS_MODELS, JSON.stringify(models)); }
+function saveIn(){ localStorage.setItem(LS_IN, JSON.stringify(inRecs)); }
+function saveOut(){ localStorage.setItem(LS_OUT, JSON.stringify(outRecs)); }
+
+const $ = id => document.getElementById(id);
+const isMobile = () => window.matchMedia("(max-width:760px)").matches;
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const today = () => new Date().toISOString().slice(0,10);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const n = parseInt(v); return isNaN(n) ? 0 : n; };
+const sum = (arr, fn) => arr.reduce((a, r) => a + fn(r), 0);
+
+/* ================= 库存计算 ================= */
+const modelName = id => { const m = models.find(x => x.id === id); return m ? m.name : id; };
+const modelThreshold = name => { const m = models.find(x => x.name === name); return m ? (+m.threshold || DEFAULT_THRESHOLD) : DEFAULT_THRESHOLD; };
+const allModelNames = () => [...new Set([...models.map(m => m.name), ...inRecs.map(r => r.model), ...outRecs.map(r => r.model)])];
+function stockOf(name){ return sum(inRecs.filter(r => r.model === name), r => +r.qty) - sum(outRecs.filter(r => r.model === name), r => +r.qty); }
+
+/* ================= 标签页 ================= */
+const PAGE_META = {
+  v1:{t:"库存概览", c:"喷头各型号实时库存与预警"},
+  v2:{t:"入库管理", c:"登记喷头入库，记录批次/供应商/单价"},
+  v3:{t:"出库管理", c:"登记喷头出库，记录领用人与用途"},
+  v4:{t:"型号管理", c:"维护喷头型号与库存预警阈值"},
+  v5:{t:"记录查询", c:"按型号/时间/类型筛选出入库明细"}
+};
+document.querySelectorAll(".nav-tab").forEach(b => b.onclick = () => switchTab(b.dataset.v));
+function switchTab(v){
+  document.querySelectorAll(".nav-tab").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+  document.querySelectorAll(".view").forEach(x => x.classList.toggle("on", x.id === v));
+  const m = PAGE_META[v];
+  $("pageTitle").textContent = m.t; $("pageCrumb").textContent = m.c;
+  if (v === "v1") renderStock();
+  else if (v === "v2") renderIn();
+  else if (v === "v3") renderOut();
+  else if (v === "v4") renderModelMgr();
+  else if (v === "v5") renderQuery();
+  updateSideMini();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ================= 渲染：库存概览 ================= */
+function renderStock(){
+  const names = allModelNames();
+  const total = sum(names, stockOf);
+  $("st_models").textContent = names.length;
+  $("st_models_n").textContent = `${names.length} 个型号`;
+  $("st_total").textContent = total;
+  $("st_total_n").textContent = `${total} 台喷头`;
+  $("st_in").textContent = sum(inRecs, r => +r.qty);
+  $("st_in_n").textContent = `${inRecs.length} 条入库`;
+  $("st_out").textContent = sum(outRecs, r => +r.qty);
+  $("st_out_n").textContent = `${outRecs.length} 条出库`;
+
+  const lowNames = names.filter(n => stockOf(n) < modelThreshold(n));
+  const tip = lowNames.length ? `<span style="color:var(--red)">⚠️ ${lowNames.length} 个型号库存不足</span>` : "";
+  $("stockTip").innerHTML = tip || "正常";
+  $("lowState").innerHTML = lowNames.length ? `⚠️ 库存预警（${lowNames.length}）` : "✅ 库存正常";
+  $("lowState").className = lowNames.length ? "btn btn-danger-ghost btn-sm" : "btn btn-ghost btn-sm";
+
+  $("stockGrid").innerHTML = names.length ? names.map(n => {
+    const st = stockOf(n), thr = modelThreshold(n), low = st < thr;
+    const maxHist = Math.max(sum(inRecs.filter(r=>r.model===n), r=>+r.qty), 1);
+    const pct = Math.max(0, Math.min(100, Math.round(st / maxHist * 100)));
+    return `<div class="stock-card${low ? " low" : ""}">
+      <div class="sc-h">
+        <div class="sc-name">${esc(n)}</div>
+        ${low ? '<span class="badge b-bad">库存不足</span>' : '<span class="badge b-ok">正常</span>'}
+      </div>
+      <div class="sc-num">${st}</div>
+      <div class="sc-bar"><i style="width:${pct}%"></i></div>
+      <div class="sc-meta">
+        <span>入 ${sum(inRecs.filter(r=>r.model===n), r=>+r.qty)}</span>
+        <span>出 ${sum(outRecs.filter(r=>r.model===n), r=>+r.qty)}</span>
+        <span style="${low ? "color:var(--red);font-weight:700" : ""}">阈值 ${thr}</span>
+      </div>
+    </div>`;
+  }).join("") : '<div class="empty" style="grid-column:1/-1"><span class="ico">🏷️</span>暂无型号，请到「型号管理」添加</div>';
+  updateSideMini();
+}
+
+/* ================= 下拉选项 ================= */
+function fillModelSelects(){
+  const opts = models.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+  $("in_model").innerHTML = opts;
+  $("out_model").innerHTML = opts;
+  $("q_model").innerHTML = '<option value="">全部</option>' + allModelNames().map(n => `<option>${esc(n)}</option>`).join("");
+}
+
+/* ================= 入库管理 ================= */
+let inEditId = null;
+$("inForm").onsubmit = () => {
+  const rec = {
+    id: inEditId || uid(),
+    date: $("in_date").value,
+    model: modelName($("in_model").value),
+    qty: num($("in_qty").value),
+    batch: $("in_batch").value.trim(),
+    supplier: $("in_supplier").value.trim(),
+    price: parseFloat($("in_price").value) || 0,
+    note: $("in_note").value.trim()
+  };
+  if (!rec.date) return toast("请选择入库日期");
+  if (!rec.model) return toast("请选择型号");
+  if (rec.qty < 1) return toast("入库数量必须 ≥ 1");
+  if (inEditId){
+    const i = inRecs.findIndex(r => r.id === inEditId);
+    inRecs[i] = rec; toast("入库记录已更新");
+  } else {
+    inRecs.unshift(rec); toast("入库登记成功");
+  }
+  saveIn(); resetInForm(); renderIn(); renderStock();
+};
+function resetInForm(){
+  inEditId = null;
+  $("inFormTitle").textContent = "喷头入库登记";
+  $("inSave").textContent = "确认入库";
+  $("inForm").reset();
+  $("in_date").value = today(); $("in_qty").value = 1;
+  if (models.length) $("in_model").value = models[0].id;
+}
+function editIn(id){
+  const r = inRecs.find(x => x.id === id); if (!r) return;
+  inEditId = id;
+  $("inFormTitle").textContent = "编辑入库记录";
+  $("inSave").textContent = "保存修改";
+  $("in_date").value = r.date;
+  const m = models.find(x => x.name === r.model);
+  $("in_model").value = m ? m.id : ($("in_model").options[0] && $("in_model").options[0].value);
+  $("in_qty").value = r.qty; $("in_batch").value = r.batch || ""; $("in_supplier").value = r.supplier || "";
+  $("in_price").value = r.price || ""; $("in_note").value = r.note || "";
+  switchTab("v2");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function delIn(id){
+  if (!confirm("确定删除这条入库记录？库存将相应减少。")) return;
+  inRecs = inRecs.filter(r => r.id !== id);
+  saveIn(); renderIn(); renderStock(); toast("入库记录已删除");
+}
+function renderIn(){
+  $("inCount").textContent = `（共 ${inRecs.length} 条 / ${sum(inRecs, r => +r.qty)} 台）`;
+  const wrap = $("inWrap"), cards = $("inCards"), empty = $("inEmpty");
+  if (isMobile()){
+    wrap.style.display = "none"; cards.style.display = "flex";
+    cards.innerHTML = inRecs.length ? inRecs.map(r => `<div class="m-card">
+      <div class="m-card-h">
+        <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.date)}</span></div>
+        <span class="badge b-info">＋${r.qty} 台</span>
+      </div>
+      <div class="m-grid">
+        <div><span>批次号</span><i>${esc(r.batch) || "—"}</i></div>
+        <div><span>供应商</span><i>${esc(r.supplier) || "—"}</i></div>
+        <div><span>单价</span><i>¥${(+r.price || 0).toFixed(2)}</i></div>
+        <div><span>数量</span><i><b>${r.qty}</b> 台</i></div>
+        ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
+      </div>
+      <div class="m-actions">
+        <button class="btn btn-ghost" onclick="editIn('${r.id}')">✏️ 编辑</button>
+        <button class="btn btn-danger-ghost" onclick="delIn('${r.id}')">🗑 删除</button>
+      </div>
+    </div>`).join("") : "";
+  } else {
+    wrap.style.display = ""; cards.style.display = "none";
+    empty.style.display = inRecs.length ? "none" : "";
+    $("inTbody").innerHTML = inRecs.map(r => `<tr>
+      <td>${esc(r.date)}</td><td><b>${esc(r.model)}</b></td><td style="color:var(--blue-d);font-weight:700">＋${r.qty}</td>
+      <td>${esc(r.batch) || "—"}</td><td>${esc(r.supplier) || "—"}</td><td>¥${(+r.price || 0).toFixed(2)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="editIn('${r.id}')">编辑</button>
+        <button class="btn btn-danger-ghost btn-sm" onclick="delIn('${r.id}')">删除</button>
+      </td></tr>`).join("");
+  }
+}
+
+/* ================= 出库管理 ================= */
+let outEditId = null;
+$("outForm").onsubmit = () => {
+  const rec = {
+    id: outEditId || uid(),
+    date: $("out_date").value,
+    model: modelName($("out_model").value),
+    qty: num($("out_qty").value),
+    user: $("out_user").value.trim(),
+    purpose: $("out_purpose").value.trim(),
+    note: $("out_note").value.trim()
+  };
+  if (!rec.date) return toast("请选择出库日期");
+  if (!rec.model) return toast("请选择型号");
+  if (rec.qty < 1) return toast("出库数量必须 ≥ 1");
+  const cur = stockOf(rec.model);
+  if (rec.qty > cur && !confirm(`该型号当前库存 ${cur} 台，本次出库 ${rec.qty} 台将超出库存，确定继续？`)) return;
+  if (outEditId){
+    const i = outRecs.findIndex(r => r.id === outEditId);
+    outRecs[i] = rec; toast("出库记录已更新");
+  } else {
+    outRecs.unshift(rec); toast("出库登记成功");
+  }
+  saveOut(); resetOutForm(); renderOut(); renderStock();
+};
+function resetOutForm(){
+  outEditId = null;
+  $("outFormTitle").textContent = "喷头出库登记";
+  $("outSave").textContent = "确认出库";
+  $("outForm").reset();
+  $("out_date").value = today(); $("out_qty").value = 1;
+  if (models.length) $("out_model").value = models[0].id;
+}
+function editOut(id){
+  const r = outRecs.find(x => x.id === id); if (!r) return;
+  outEditId = id;
+  $("outFormTitle").textContent = "编辑出库记录";
+  $("outSave").textContent = "保存修改";
+  $("out_date").value = r.date;
+  const m = models.find(x => x.name === r.model);
+  $("out_model").value = m ? m.id : ($("out_model").options[0] && $("out_model").options[0].value);
+  $("out_qty").value = r.qty; $("out_user").value = r.user || ""; $("out_purpose").value = r.purpose || ""; $("out_note").value = r.note || "";
+  switchTab("v3");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function delOut(id){
+  if (!confirm("确定删除这条出库记录？库存将相应增加。")) return;
+  outRecs = outRecs.filter(r => r.id !== id);
+  saveOut(); renderOut(); renderStock(); toast("出库记录已删除");
+}
+function renderOut(){
+  $("outCount").textContent = `（共 ${outRecs.length} 条 / ${sum(outRecs, r => +r.qty)} 台）`;
+  const wrap = $("outWrap"), cards = $("outCards"), empty = $("outEmpty");
+  if (isMobile()){
+    wrap.style.display = "none"; cards.style.display = "flex";
+    cards.innerHTML = outRecs.length ? outRecs.map(r => `<div class="m-card">
+      <div class="m-card-h">
+        <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.date)}</span></div>
+        <span class="badge b-wait">－${r.qty} 台</span>
+      </div>
+      <div class="m-grid">
+        <div><span>领用人/部门</span><i>${esc(r.user) || "—"}</i></div>
+        <div><span>数量</span><i><b>${r.qty}</b> 台</i></div>
+        <div><span>用途</span><i>${esc(r.purpose) || "—"}</i></div>
+        <div><span>出库日期</span><i>${esc(r.date)}</i></div>
+        ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
+      </div>
+      <div class="m-actions">
+        <button class="btn btn-ghost" onclick="editOut('${r.id}')">✏️ 编辑</button>
+        <button class="btn btn-danger-ghost" onclick="delOut('${r.id}')">🗑 删除</button>
+      </div>
+    </div>`).join("") : "";
+  } else {
+    wrap.style.display = ""; cards.style.display = "none";
+    empty.style.display = outRecs.length ? "none" : "";
+    $("outTbody").innerHTML = outRecs.map(r => `<tr>
+      <td>${esc(r.date)}</td><td><b>${esc(r.model)}</b></td><td style="color:var(--amber);font-weight:700">－${r.qty}</td>
+      <td>${esc(r.user) || "—"}</td><td>${esc(r.purpose) || "—"}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="editOut('${r.id}')">编辑</button>
+        <button class="btn btn-danger-ghost btn-sm" onclick="delOut('${r.id}')">删除</button>
+      </td></tr>`).join("");
+  }
+}
+
+/* ================= 型号管理 ================= */
+let modelEditId = null;
+$("modelForm").onsubmit = () => {
+  const name = $("m_name").value.trim();
+  const threshold = num($("m_threshold").value);
+  if (!name) return toast("请填写型号名称");
+  if (threshold < 0) return toast("阈值不能为负数");
+  if (modelEditId){
+    const i = models.findIndex(x => x.id === modelEditId);
+    models[i] = { id: modelEditId, name, threshold, note: $("m_note").value.trim() };
+    toast("型号已更新");
+  } else {
+    if (models.some(x => x.name === name)) return toast("该型号已存在");
+    models.push({ id: uid(), name, threshold, note: $("m_note").value.trim() });
+    toast("型号已新增");
+  }
+  saveModels(); resetModelForm(); renderModelMgr(); renderStock(); fillModelSelects();
+};
+function resetModelForm(){
+  modelEditId = null;
+  $("modelFormTitle").textContent = "新增喷头型号";
+  $("modelSave").textContent = "新增型号";
+  $("modelForm").reset();
+  $("m_threshold").value = DEFAULT_THRESHOLD;
+}
+function editModel(id){
+  const m = models.find(x => x.id === id); if (!m) return;
+  modelEditId = id;
+  $("modelFormTitle").textContent = "编辑型号";
+  $("modelSave").textContent = "保存修改";
+  $("m_name").value = m.name; $("m_threshold").value = m.threshold; $("m_note").value = m.note || "";
+  switchTab("v4");
+}
+function delModel(id){
+  const m = models.find(x => x.id === id); if (!m) return;
+  const hasRec = inRecs.some(r => r.model === m.name) || outRecs.some(r => r.model === m.name);
+  if (!confirm(`确定删除型号「${m.name}」？${hasRec ? "该型号存在历史出入库记录，删除后记录仍保留（不再参与库存概览与下拉选择）。" : ""}`)) return;
+  models = models.filter(x => x.id !== id);
+  saveModels(); renderModelMgr(); renderStock(); fillModelSelects(); toast("型号已删除");
+}
+function renderModelMgr(){
+  $("modelCount").textContent = `（${models.length} 个）`;
+  const wrap = $("modelWrap"), cards = $("modelCards"), empty = $("modelEmpty");
+  if (isMobile()){
+    wrap.style.display = "none"; cards.style.display = "flex";
+    cards.innerHTML = models.length ? models.map(m => {
+      const st = stockOf(m.name), low = st < m.threshold;
+      return `<div class="m-card">
+        <div class="m-card-h">
+          <div class="m-t"><b>${esc(m.name)}</b></div>
+          ${low ? '<span class="badge b-bad">库存不足</span>' : '<span class="badge b-ok">正常</span>'}
+        </div>
+        <div class="m-grid">
+          <div><span>预警阈值</span><i>${m.threshold} 台</i></div>
+          <div><span>当前库存</span><i style="${low ? "color:var(--red);font-weight:600" : ""}">${st} 台</i></div>
+          ${m.note ? `<div class="full"><span>说明</span><i>${esc(m.note)}</i></div>` : ""}
+        </div>
+        <div class="m-actions">
+          <button class="btn btn-ghost" onclick="editModel('${m.id}')">✏️ 编辑</button>
+          <button class="btn btn-danger-ghost" onclick="delModel('${m.id}')">🗑 删除</button>
+        </div>
+      </div>`;
+    }).join("") : "";
+  } else {
+    wrap.style.display = ""; cards.style.display = "none";
+    empty.style.display = models.length ? "none" : "";
+    $("modelTbody").innerHTML = models.map(m => {
+      const st = stockOf(m.name), low = st < m.threshold;
+      return `<tr>
+        <td><b>${esc(m.name)}</b></td>
+        <td>${m.threshold} 台</td>
+        <td style="${low ? "color:var(--red);font-weight:700" : "font-weight:700"}">${st}${low ? ' <span class="badge b-bad">低</span>' : ""}</td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis" title="${esc(m.note)}">${esc(m.note) || "—"}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="editModel('${m.id}')">编辑</button>
+          <button class="btn btn-danger-ghost btn-sm" onclick="delModel('${m.id}')">删除</button>
+        </td></tr>`;
+    }).join("");
+  }
+}
+
+/* ================= 记录查询 ================= */
+function resetQuery(){
+  $("q_type").value = ""; $("q_model").value = ""; $("q_from").value = ""; $("q_to").value = "";
+  renderQuery();
+}
+function renderQuery(){
+  const type = $("q_type").value, m = $("q_model").value, f = $("q_from").value, t = $("q_to").value;
+  const rows = [
+    ...inRecs.map(r => ({ kind: "入库", date: r.date, model: r.model, qty: +r.qty, detail: `批次 ${r.batch || "—"} ｜ 供应商 ${r.supplier || "—"} ｜ ¥${(+r.price || 0).toFixed(2)}`, note: r.note || "" })),
+    ...outRecs.map(r => ({ kind: "出库", date: r.date, model: r.model, qty: +r.qty, detail: `领用 ${r.user || "—"} ｜ 用途 ${r.purpose || "—"}`, note: r.note || "" }))
+  ].filter(r =>
+    (!type || r.kind === type) && (!m || r.model === m) &&
+    (!f || r.date >= f) && (!t || r.date <= t)
+  ).sort((a, b) => (a.date === b.date ? (a.kind === b.kind ? 0 : a.kind === "入库" ? -1 : 1) : b.date.localeCompare(a.date)));
+  $("qCount").textContent = `（共 ${rows.length} 条）`;
+  const wrap = $("qWrap"), cards = $("qCards"), empty = $("qEmpty");
+  if (isMobile()){
+    wrap.style.display = "none"; cards.style.display = "flex";
+    cards.innerHTML = rows.length ? rows.map(r => `<div class="m-card">
+      <div class="m-card-h">
+        <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.date)}</span></div>
+        <span class="badge ${r.kind === "入库" ? "b-info" : "b-wait"}">${r.kind} ${r.kind === "入库" ? "＋" : "－"}${r.qty}</span>
+      </div>
+      <div class="m-grid">
+        <div><span>明细</span><i>${esc(r.detail)}</i></div>
+        ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
+      </div>
+    </div>`).join("") : "";
+  } else {
+    wrap.style.display = ""; cards.style.display = "none";
+    empty.style.display = rows.length ? "none" : "";
+    $("qTbody").innerHTML = rows.map(r => `<tr>
+      <td><span class="badge ${r.kind === "入库" ? "b-info" : "b-wait"}">${r.kind}</span></td>
+      <td>${esc(r.date)}</td><td><b>${esc(r.model)}</b></td>
+      <td style="${r.kind === "入库" ? "color:var(--blue-d)" : "color:var(--amber)"};font-weight:700">${r.kind === "入库" ? "＋" : "－"}${r.qty}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.detail)}">${esc(r.detail)}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
+    </tr>`).join("");
+  }
+}
+
+/* ================= 侧栏迷你概览 ================= */
+function updateSideMini(){
+  const names = allModelNames();
+  $("sm_models").textContent = names.length;
+  $("sm_total").textContent = sum(names, stockOf);
+  $("sm_low").textContent = names.filter(n => stockOf(n) < modelThreshold(n)).length;
+}
+
+/* ================= 示例数据 ================= */
+function seedDemo(){
+  if ((inRecs.length || outRecs.length) && !confirm("载入示例数据会追加到现有数据，继续？")) return;
+  const day = i => { const d = new Date(); d.setDate(d.getDate() - i); return d.toISOString().slice(0, 10); };
+  const demoIn = [
+    { date: day(12), model: "XP600", qty: 10, batch: "B260814-01", supplier: "东莞", price: 1280, note: "主用型号备货" },
+    { date: day(8),  model: "3200", qty: 5,  batch: "B260816-02", supplier: "东莞", price: 980,  note: "" },
+    { date: day(5),  model: "3200U1", qty: 4, batch: "B260819-03", supplier: "深圳", price: 1100, note: "新批次" },
+    { date: day(3),  model: "DX7", qty: 3,  batch: "B260821-04", supplier: "东莞", price: 860,  note: "" },
+    { date: day(1),  model: "XP600", qty: 6,  batch: "B260823-05", supplier: "东莞", price: 1280, note: "紧急补货" }
+  ].map(r => ({ id: uid(), ...r }));
+  const demoOut = [
+    { date: day(10), model: "XP600", qty: 3, user: "张三 / 生产部", purpose: "更换维修", note: "" },
+    { date: day(7),  model: "3200", qty: 2,  user: "李四 / 售后部", purpose: "客户返修", note: "旧头回收" },
+    { date: day(4),  model: "XP600", qty: 4, user: "王五 / 生产部", purpose: "装机", note: "" },
+    { date: day(2),  model: "1600", qty: 1,  user: "赵六 / 生产部", purpose: "试验", note: "测试用" },
+    { date: day(0),  model: "DX7", qty: 2,   user: "生产部", purpose: "更换维修", note: "" }
+  ].map(r => ({ id: uid(), ...r }));
+  inRecs = [...demoIn, ...inRecs];
+  outRecs = [...demoOut, ...outRecs];
+  saveIn(); saveOut(); renderStock(); renderIn(); renderOut(); renderQuery();
+  toast("示例数据已载入");
+}
+
+/* ================= 启动 ================= */
+fillModelSelects();
+resetInForm(); resetOutForm();
+renderStock(); renderIn(); renderOut(); renderModelMgr(); renderQuery();
+updateSideMini();
+
+/* 响应式：旋转/尺寸变化重绘 */
+let _rsTm = null;
+window.addEventListener("resize", () => {
+  clearTimeout(_rsTm);
+  _rsTm = setTimeout(() => {
+    const v = document.querySelector(".view.on");
+    if (v && v.id === "v1") renderStock();
+    else if (v && v.id === "v2") renderIn();
+    else if (v && v.id === "v3") renderOut();
+    else if (v && v.id === "v4") renderModelMgr();
+    else if (v && v.id === "v5") renderQuery();
+  }, 150);
+});
+
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.classList.remove("on"), 2200);
+}
+</script>
+</body>
+</html>
