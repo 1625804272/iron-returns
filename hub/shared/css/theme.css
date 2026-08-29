@@ -199,7 +199,7 @@ body.no-side .content{max-width:1280px;padding-left:28px;padding-right:28px}
 
 /* ============ 表格 ============ */
 .table-wrap{overflow:auto;max-height:66vh}
-.rt{width:100%;border-collapse:separate;border-spacing:0}
+.rt{width:100%;border-collapse:separate;border-spacing:0;min-width:780px}
 .rt thead th{position:sticky;top:0;z-index:5;background:var(--surface-2);text-align:left;font-size:11.5px;font-weight:600;color:var(--faint);padding:10px 16px;border-bottom:1px solid var(--border);white-space:nowrap;letter-spacing:.03em}
 .rt tbody tr{transition:background var(--t-fast)}
 .rt tbody tr:hover{background:var(--surface-2)}
@@ -248,13 +248,13 @@ body.no-side .content{max-width:1280px;padding-left:28px;padding-right:28px}
 .modal-mask.open{opacity:1;pointer-events:auto;visibility:visible}
 .modal{width:560px;max-width:100%;max-height:calc(100vh - 48px);overflow-y:auto;background:var(--surface);border-radius:18px;box-shadow:var(--shadow-lg);transform:translateY(14px) scale(.98);transition:transform var(--t-normal)}
 .modal-mask.open .modal{transform:none}
-.m-head{display:flex;align-items:center;gap:10px;padding:18px 22px 14px;border-bottom:1px solid var(--border)}
+.m-head{display:flex;align-items:center;gap:10px;padding:18px 22px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:2}
 .m-head h3{font-size:16px;font-weight:700}
 .m-head .m-tag{font-size:11px;color:var(--primary);background:var(--primary-soft);padding:2px 8px;border-radius:99px;font-weight:600}
 .m-close{margin-left:auto;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:15px}
 .m-close:hover{background:var(--surface-2);color:var(--ink)}
 .m-body{padding:20px 22px 8px}
-.m-foot{display:flex;gap:10px;padding:16px 22px 20px;justify-content:flex-end;border-top:1px solid var(--border);margin-top:8px;flex-wrap:wrap}
+.m-foot{display:flex;gap:10px;padding:16px 22px 20px;justify-content:flex-end;border-top:1px solid var(--border);margin-top:8px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--surface);z-index:2}
 
 /* ============ 表单 ============ */
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:15px}
@@ -425,8 +425,23 @@ select.f-input{appearance:none;background:var(--surface) url("data:image/svg+xml
   body{font-size:13.5px}
   .content{padding:16px 14px 96px}
   .topbar{height:58px;gap:10px}
-  .tb-title h1{font-size:15.5px}
-  .tb-title .tb-sub{display:none}
+  /* 顶栏释放空间：隐藏副标题区，按钮紧凑，防止溢出换行错位 */
+  .tb-title{display:none}
+  .tb-actions{gap:6px;flex-wrap:nowrap}
+  .tb-actions .btn{height:32px;padding:0 10px;font-size:12px;white-space:nowrap}
+  .tb-actions .brand-mark{width:30px;height:30px;font-size:15px}
+  .page-head .ph-main h2{font-size:19px}
+  /* 页面操作区整行换行，按钮均分 */
+  .page-head .ph-act{width:100%;gap:8px}
+  .page-head .ph-act .btn{flex:1;justify-content:center;padding:0 8px}
+  /* 表格强制横向滚动，列不挤压 */
+  .rt{min-width:860px}
+  /* 行内操作按钮加大，便于触控 */
+  .row-btn{width:34px;height:34px;border-radius:9px;font-size:15px}
+  /* 筛选控件最小宽度 */
+  .select{min-width:108px}
+  /* iOS 防聚焦自动缩放：输入类控件字号 ≥16px */
+  .f-input, select.f-input, textarea.f-input, .searchbox input, .select{font-size:16px}
   /* 页签：横向滚动，贴住顶栏下方 */
   .page-tabs{top:58px;padding:10px 14px 2px;margin:0}
   .pt-btn{height:36px;padding:0 15px;font-size:13px}
@@ -458,7 +473,7 @@ select.f-input{appearance:none;background:var(--surface) url("data:image/svg+xml
   .entry{padding:18px}
 
   /* 底部导航 */
-  .bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);z-index:130;padding-bottom:env(safe-area-inset-bottom,0)}
+  .bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);z-index:110;padding-bottom:env(safe-area-inset-bottom,0)}
   .bottom-nav .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px 9px;font-size:10.5px;color:var(--faint);text-decoration:none;font-weight:600}
   .bottom-nav .bn-item .bn-ico{font-size:19px;line-height:1.1}
   .bottom-nav .bn-item.active{color:var(--primary)}
