@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>公网数据导入（测试用） · 台账中心</title>
+<link rel="stylesheet" href="_shared/css/theme.css">
+<style>
+.wrap{max-width:820px;margin:0 auto;padding:34px 20px 60px}
+.src{margin-top:8px;font-family:var(--font-mono);font-size:11.5px;color:var(--faint);word-break:break-all}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.tbl th{text-align:left;padding:9px 12px;background:var(--surface-2);color:var(--muted);font-size:11.5px;border-bottom:1px solid var(--border)}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.tbl td.num{font-family:var(--font-mono);font-weight:700;text-align:right}
+</style>
+</head>
+<body class="portal">
+<div class="wrap">
+
+  <header class="portal-nav" style="padding-top:0">
+    <a class="pn-brand" href="index.html">
+      <div class="pn-mark">⬇️</div>
+      <div class="pn-text"><b>公网数据导入</b><span>IMPORT TEST</span></div>
+    </a>
+  </header>
+
+  <section class="dash-hero" style="margin-bottom:18px">
+    <div class="dh-text">
+      <div class="dh-greet">导入公网（GitHub）上的真实台账数据</div>
+      <div class="dh-title" style="font-size:25px">一键导入测试</div>
+      <div class="dh-date">用于验证新系统能正确读取并展示线上已有数据</div>
+    </div>
+  </section>
+
+  <div class="card">
+    <div class="card-head"><h3>数据来源</h3></div>
+    <div class="card-body" style="padding-top:6px">
+      <table class="tbl">
+        <thead><tr><th>模块</th><th>来源文件</th><th class="num">记录数</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>熨斗退货台账</td>
+            <td>data/returns.json<div class="src">github.com/1625804272/iron-returns</div></td>
+            <td class="num">18 笔</td>
+          </tr>
+          <tr>
+            <td>熨斗 · 补发记录</td>
+            <td>data/returns.json（reps）</td>
+            <td class="num">0 条</td>
+          </tr>
+          <tr>
+            <td>喷头 · 型号</td>
+            <td>data/printhead.json<div class="src">github.com/1625804272/iron-returns</div></td>
+            <td class="num">6 个</td>
+          </tr>
+          <tr>
+            <td>喷头 · 入库记录</td>
+            <td>data/printhead.json（inRecs）</td>
+            <td class="num">5 条</td>
+          </tr>
+          <tr>
+            <td>喷头 · 出库记录</td>
+            <td>data/printhead.json（outRecs）</td>
+            <td class="num">7 条</td>
+          </tr>
+          <tr>
+            <td style="color:var(--faint)">胸章退货台账</td>
+            <td style="color:var(--faint)">公网暂无（新模块，从未上线）</td>
+            <td class="num" style="color:var(--faint)">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>导入方式</h3><span class="ch-sub">选择一种方式写入本机浏览器</span></div>
+    <div class="card-body">
+      <div class="f-field" style="margin-bottom:14px">
+        <label>导入模式</label>
+        <select class="f-input" id="mode">
+          <option value="replace">覆盖导入（清空本机对应模块数据，完全使用线上数据）</option>
+          <option value="merge">追加合并（保留本机数据，按记录 ID / 型号名去重）</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn primary" id="btnAll">导入全部（熨斗 + 喷头）</button>
+        <button class="btn ghost" id="btnIron">仅导入熨斗</button>
+        <button class="btn ghost" id="btnPh">仅导入喷头</button>
+        <a class="btn ghost" href="index.html">前往主页</a>
+      </div>
+      <div class="info-strip" style="margin-top:16px">
+        💡 导入后数据写入本机 localStorage（lh_ 前缀键），与线上数据互不影响；
+        可随时在下方「清空本机数据」重来，或到主页点「清空全部数据」。
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn danger-soft sm" id="btnWipe">清空本机台账数据</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>导入结果</h3></div>
+    <div class="card-body"><div id="log" style="font-family:var(--font-mono);font-size:12px;color:var(--muted);line-height:1.9;white-space:pre-wrap">等待导入……</div></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="_shared/js/core.js"></script>
+<script src="_shared/js/modules.js"></script>
+<script>
+/* ===== 公网原始数据（已从 GitHub 仓库 data/ 目录拉取，内嵌便于离线导入） ===== */
+var PUBLIC_RETURNS = {"app": "iron-returns", "version": 1, "savedAt": "2026-08-28T05:58:23.353Z", "returns": [{"id": "mtcjj8vvyu3zz", "date": "2026-08-28", "orderNo": "A18", "model": "L", "color": "红", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "YT7639966603192", "note": "少说明书"}, {"id": "mtcj9p10f6g2z", "date": "2026-08-28", "orderNo": "A18", "model": "L3", "color": "绿", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "不合格", "reasons": ["屏幕不显示"], "issue": "", "express": "435323088723197", "note": ""}, {"id": "mtcj1kejiwbyt", "date": "2026-08-28", "orderNo": "A53", "model": "L3", "color": "绿", "volt": "220V", "plug": "国标", "qty": 2, "supplier": "东莞", "insp": "不合格", "reasons": ["不加热"], "issue": "一台不加热，一台跳闸", "express": "JT0025343582943", "note": ""}, {"id": "mtcihnqwik0ty", "date": "2026-08-28", "orderNo": "A-S-A48-L-202608202741", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "YT2592945284672", "note": ""}, {"id": "mtcidhhiksr6l", "date": "2026-08-28", "orderNo": "A-S-A48-L-202608172719", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "772076849472287", "note": ""}, {"id": "mt9j5xweks2g8", "date": "2026-08-26", "orderNo": "A18", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "不合格", "reasons": ["壳料破损脏污"], "issue": "客户不需要logo让仓库擦掉，使用香蕉水擦掉油漆", "express": "", "note": ""}, {"id": "mt9j44sfdhogl", "date": "2026-08-26", "orderNo": "A18", "model": "L", "color": "红", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "SF1226276530408", "note": ""}, {"id": "mt7zvrn0tv0ei", "date": "2026-08-25", "orderNo": "A18", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "不合格", "reasons": ["不通电"], "issue": "电源线解除不良", "express": "SF0212407067488", "note": ""}, {"id": "mt7zryav8qhfy", "date": "2026-08-25", "orderNo": "A-S-A17-202608113602", "model": "L3", "color": "绿", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "773437603209273", "note": ""}, {"id": "mt40x5jzl2l9j", "date": "2026-08-22", "orderNo": "A48", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "缺料", "reasons": [], "issue": "", "express": "", "note": "缺少袋子"}, {"id": "mt40wh0fnku8h", "date": "2026-08-22", "orderNo": "A48", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "缺料", "reasons": [], "issue": "", "express": "", "note": "缺少说明书和袋子"}, {"id": "mt40udsf6y13i", "date": "2026-08-22", "orderNo": "A53", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "不合格", "reasons": ["壳料破损脏污"], "issue": "", "express": "", "note": ""}, {"id": "mt40u1p4b4bx0", "date": "2026-08-22", "orderNo": "A18", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "不合格", "reasons": ["发热板脏污或划痕"], "issue": "", "express": "", "note": ""}, {"id": "mt40tqtbvwo1l", "date": "2026-08-22", "orderNo": "A18", "model": "L", "color": "红", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "不合格", "reasons": ["发热板脏污或划痕"], "issue": "", "express": "", "note": ""}, {"id": "mt40lok17hna2", "date": "2026-08-22", "orderNo": "A-S-A17-L-202608113601", "model": "L3", "color": "绿", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "", "note": ""}, {"id": "mt408kxw9pjou", "date": "2026-08-22", "orderNo": "A48", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "772075646209964", "note": ""}, {"id": "mt3zjf45i7dxn", "date": "2026-08-22", "orderNo": "A48", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "772075591635750", "note": ""}, {"id": "mt3z9wopesolu", "date": "2026-08-21", "orderNo": "A18", "model": "L2", "color": "紫", "volt": "220V", "plug": "国标", "qty": 1, "supplier": "东莞", "insp": "合格", "reasons": [], "issue": "", "express": "", "note": ""}], "reps": []};
+var PUBLIC_PRINTHEAD = {"app": "printhead", "version": 1, "savedAt": "2026-08-26T09:41:51.047Z", "models": [{"id": "m0", "name": "XP600", "threshold": 5, "note": ""}, {"id": "m1", "name": "3200", "threshold": 5, "note": ""}, {"id": "m2", "name": "1600", "threshold": 5, "note": ""}, {"id": "m3", "name": "3200U1", "threshold": 5, "note": ""}, {"id": "m4", "name": "3200八柱", "threshold": 5, "note": ""}, {"id": "m5", "name": "DX7", "threshold": 5, "note": ""}], "inRecs": [{"id": "mt9wcww9i27e2", "date": "2026-08-26", "orderNo": "设计领料未使用，二次入库", "model": "XP600", "qty": 2, "batch": "", "supplier": "", "price": 0, "note": ""}, {"id": "mt9wccgo1hzi5", "date": "2026-08-26", "orderNo": "损坏的补发回来了", "model": "XP600", "qty": 1, "batch": "", "supplier": "", "price": 0, "note": ""}, {"id": "mt9w85h4hg6ib", "date": "2026-08-15", "orderNo": "损坏的补发回来了", "model": "XP600", "qty": 1, "batch": "", "supplier": "", "price": 0, "note": ""}, {"id": "mt9w5wiom7d4d", "date": "2026-08-13", "orderNo": "备库存", "model": "XP600", "qty": 10, "batch": "", "supplier": "", "price": 0, "note": ""}, {"id": "mt9w02ahw4zbx", "date": "2026-08-05", "orderNo": "A-S-A07-G-202607301962", "model": "XP600", "qty": 5, "batch": "", "supplier": "", "price": 0, "note": ""}], "outRecs": [{"id": "mt9wbwf4w59xe", "date": "2026-08-25", "orderNo": "A-S-A12-L-202608181038", "model": "XP600", "qty": 2, "user": "黄金燕", "purpose": "散单出货", "note": ""}, {"id": "mt9wb2pc3wlm0", "date": "2026-08-21", "orderNo": "A-S-A32-G-202608181505", "model": "XP600", "qty": 1, "user": "黄金燕", "purpose": "散单出货", "note": ""}, {"id": "mt9w9cip7xaq9", "date": "2026-08-20", "orderNo": "A-S-A13-L-202608031326", "model": "XP600", "qty": 1, "user": "黄金燕", "purpose": "验机", "note": ""}, {"id": "mt9w7cyr6y8sp", "date": "2026-08-14", "orderNo": "A-S-A20-L-202608141523", "model": "XP600", "qty": 1, "user": "黄金燕", "purpose": "散单出货", "note": ""}, {"id": "mt9w534o84m37", "date": "2026-08-05", "orderNo": "损坏退换", "model": "XP600", "qty": 1, "user": "黄金燕", "purpose": "损坏退换", "note": ""}, {"id": "mt9w3ifmm432a", "date": "2026-08-08", "orderNo": "设计领料", "model": "XP600", "qty": 2, "user": "设计", "purpose": "用于样机使用", "note": ""}, {"id": "mt9w1iaofdbmb", "date": "2026-08-05", "orderNo": "A-S-A13-L-202608031326", "model": "XP600", "qty": 2, "user": "黄忠敏", "purpose": "验机", "note": ""}]};
+
+var K = LH.KEYS;
+var log = document.getElementById('log');
+function say(s){ log.textContent += s + '\n'; }
+
+function importIron(mode){
+  var ret = (PUBLIC_RETURNS.returns || []).slice();
+  var rep = (PUBLIC_RETURNS.reps || []).slice();
+  if (mode === 'merge'){
+    var cur = LH.store.get(K.iron.returns, []) || [];
+    var curRep = LH.store.get(K.iron.reps, []) || [];
+    var m = {};
+    cur.concat(ret).forEach(function(r){ m[r.id] = r; });
+    ret = Object.keys(m).map(function(k){ return m[k]; });
+    var m2 = {};
+    curRep.concat(rep).forEach(function(r){ m2[r.id] = r; });
+    rep = Object.keys(m2).map(function(k){ return m2[k]; });
+  }
+  LH.store.set(K.iron.returns, ret);
+  LH.store.set(K.iron.reps, rep);
+  say('熨斗：写入退货 ' + ret.length + ' 笔、补发 ' + rep.length + ' 条');
+}
+function importPh(mode){
+  var models = (PUBLIC_PRINTHEAD.models || []).slice();
+  var ins = (PUBLIC_PRINTHEAD.inRecs || []).slice();
+  var outs = (PUBLIC_PRINTHEAD.outRecs || []).slice();
+  if (mode === 'merge'){
+    var curM = LH.store.get(K.printhead.models, []) || [];
+    var names = {};
+    curM.forEach(function(x){ names[x.name] = x; });
+    models.forEach(function(x){ names[x.name] = x; });
+    models = Object.keys(names).map(function(k){ return names[k]; });
+    var m1 = {};
+    (LH.store.get(K.printhead.inRecs, []) || []).concat(ins).forEach(function(r){ m1[r.id] = r; });
+    ins = Object.keys(m1).map(function(k){ return m1[k]; });
+    var m2 = {};
+    (LH.store.get(K.printhead.outRecs, []) || []).concat(outs).forEach(function(r){ m2[r.id] = r; });
+    outs = Object.keys(m2).map(function(k){ return m2[k]; });
+  }
+  LH.store.set(K.printhead.models, models);
+  LH.store.set(K.printhead.inRecs, ins);
+  LH.store.set(K.printhead.outRecs, outs);
+  say('喷头：写入型号 ' + models.length + ' 个、入库 ' + ins.length + ' 条、出库 ' + outs.length + ' 条');
+}
+
+function run(which){
+  var mode = document.getElementById('mode').value;
+  log.textContent = '开始导入（模式：' + (mode === 'merge' ? '追加合并' : '覆盖导入') + '）\n';
+  if (which === 'all' || which === 'iron') importIron(mode);
+  if (which === 'all' || which === 'ph') importPh(mode);
+  say('✅ 完成！可前往主页或各模块查看。');
+  LH.toast('导入完成');
+}
+
+document.getElementById('btnAll').addEventListener('click', function(){ run('all'); });
+document.getElementById('btnIron').addEventListener('click', function(){ run('iron'); });
+document.getElementById('btnPh').addEventListener('click', function(){ run('ph'); });
+document.getElementById('btnWipe').addEventListener('click', function(){
+  LH.confirm('确定清空本机三个模块的台账数据？', '确定清空').then(function(ok){
+    if (!ok) return;
+    LH.wipeAll();
+    log.textContent = '已清空本机台账数据。';
+    LH.toast('已清空');
+  });
+});
+
+say('熨斗退货 ' + (PUBLIC_RETURNS.returns||[]).length + ' 笔 · 补发 ' + (PUBLIC_RETURNS.reps||[]).length + ' 条');
+say('喷头型号 ' + (PUBLIC_PRINTHEAD.models||[]).length + ' 个 · 入库 ' + (PUBLIC_PRINTHEAD.inRecs||[]).length + ' 条 · 出库 ' + (PUBLIC_PRINTHEAD.outRecs||[]).length + ' 条');
+say('等待导入……');
+</script>
+</body>
+</html>
