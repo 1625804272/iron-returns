@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>台账中心 · Ledger Hub</title>
+<link rel="stylesheet" href="_shared/css/theme.css">
+</head>
+<body class="portal">
+
+<!-- ============ 门户主页（无侧栏，纯落地页） ============ -->
+<div class="portal-wrap">
+
+  <!-- 顶部品牌行 -->
+  <header class="portal-nav">
+    <a class="pn-brand" href="index.html">
+      <div class="pn-mark">◈</div>
+      <div class="pn-text"><b>台账中心</b><span>LEDGER HUB</span></div>
+    </a>
+  </header>
+
+  <!-- 仪表盘欢迎区：问候 + 日期 + 系统概览 -->
+  <section class="dash-hero">
+    <div class="dh-text">
+      <div class="dh-greet" id="dashGreet">你好，欢迎回来</div>
+      <div class="dh-title">台账中心</div>
+      <div class="dh-date" id="dashDate"></div>
+    </div>
+  </section>
+
+  <!-- 系统概览（配置驱动） -->
+  <div class="dash-stats" id="dashStats"></div>
+
+  <!-- 快捷操作（配置驱动，来自各模块 quick 配置） -->
+  <div class="dash-quick" id="dashQuick"></div>
+
+  <!-- 模块入口（由 _shared/js/modules.js 的配置自动渲染，新增模块只需改配置） -->
+  <div class="entry-grid" id="entryGrid"></div>
+
+  <!-- 数据速览 -->
+  <div class="portal-charts">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-head">
+        <h3>近 6 个月退货趋势</h3>
+        <span class="ch-sub">熨斗 / 胸章 合计退货数量</span>
+      </div>
+      <div class="card-body"><div class="chart-box" id="chartTrend"></div></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-head"><h3>喷头库存分布</h3><span class="ch-sub">各型号在库（红=低于阈值）</span></div>
+      <div class="card-body"><div class="chart-box" id="chartStock"></div></div>
+    </div>
+  </div>
+
+  <!-- 数据说明 -->
+  <div class="portal-info">
+    <span style="font-size:20px">💾</span>
+    <span style="font-size:12.5px;color:var(--muted)">所有数据仅保存在当前浏览器本地（localStorage）。换设备或清理缓存前，请在各模块内「导出 CSV」或「备份 JSON」留存。</span>
+  </div>
+
+  <footer class="portal-foot">
+    <div class="mono" style="margin-bottom:8px">
+      <a href="import.html" style="color:var(--primary);text-decoration:none;font-weight:600">⬇️ 导入公网数据（测试）</a>
+    </div>
+    <div class="mono">LEDGER HUB · V1.0.0 · LOCAL</div>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="_shared/js/core.js"></script>
+<script src="_shared/js/modules.js"></script>
+<script src="_shared/js/echarts.min.js"></script>
+<script src="assets/home.js"></script>
+</body>
+</html>
