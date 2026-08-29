@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>胸章退货台账 · 台账中心</title>
+<link rel="stylesheet" href="_shared/css/theme.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="index.html">
+      <div class="brand-mark" id="brandMark">🎖️</div>
+      <div class="brand-text">
+        <span class="b-name" id="brandName">胸章退货台账</span>
+        <span class="b-sub" id="brandSub">BADGE RETURN LEDGER</span>
+      </div>
+    </a>
+    <nav class="side-nav" id="sideNav"></nav>
+    <div class="side-foot">
+      <div class="sf-row"><span>退货笔数</span><b id="sfN">0</b></div>
+      <div class="sf-row"><span>待换新</span><b id="sfDue" style="color:var(--red)">0</b></div>
+      <div class="side-ver">v1.0.0 · LOCAL</div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="tb-burger" id="tbBurger" aria-label="菜单">☰</button>
+      <div class="tb-title">
+        <h1 id="pageTitle">退货登记</h1>
+        <span class="tb-sub" id="pageSub">录入每笔胸章退货的客户、型号、工艺与检验情况</span>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="tb-actions">
+        <button class="btn ghost sm" id="btnCloud">☁️ <span>本地</span></button>
+        <button class="btn ghost sm" id="btnSeed">载入示例</button>
+        <a class="btn ghost sm" href="index.html">← 返回主页</a>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== 视图1：退货登记 ===== -->
+      <section class="view active" id="vReg">
+        <div class="page-head">
+          <div class="ph-main"><h2>退货登记</h2><p>选「不合格」需勾选具体原因；合格记录不计入待换新</p></div>
+          <div class="ph-act">
+            <button class="btn ghost sm" id="btnExport">导出 CSV</button>
+            <button class="btn ghost sm" id="btnBackup">备份 JSON</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3 id="formTitle">新增退货登记</h3><span class="ch-sub">带 <span style="color:var(--red)">*</span> 为必填</span></div>
+          <div class="card-body">
+            <form id="retForm" autocomplete="off">
+              <div class="f-row">
+                <div class="f-field"><label>退货日期 <span class="req">*</span></label><input class="f-input" type="date" id="f_date"></div>
+                <div class="f-field"><label>订单号 <span class="req">*</span></label><input class="f-input" type="text" id="f_order" placeholder="如 XA20260826001"></div>
+                <div class="f-field"><label>快递单号</label><input class="f-input" type="text" id="f_express" placeholder="选填"></div>
+                <div class="f-field"><label>客户 / 来源 <span class="req">*</span></label>
+                  <input class="f-input" type="text" id="f_customer" list="custList" placeholder="如 广州印花纺织科技">
+                  <datalist id="custList"></datalist>
+                </div>
+                <div class="f-field"><label>型号 <span class="req">*</span></label><select class="f-input" id="f_model"></select></div>
+                <div class="f-field"><label>工艺</label>
+                  <select class="f-input" id="f_craft">
+                    <option>UV打印</option><option>丝印</option><option>滴胶</option><option>冲压</option><option>腐蚀</option><option>其他</option>
+                  </select>
+                </div>
+                <div class="f-field"><label>数量 <span class="req">*</span></label><input class="f-input" type="number" id="f_qty" min="1" step="1" value="1"></div>
+                <div class="f-field"><label>供应商 / 生产方 <span class="req">*</span></label>
+                  <input class="f-input" type="text" id="f_supplier" list="supList" value="东莞徽章厂">
+                  <datalist id="supList"></datalist>
+                </div>
+                <div class="f-field full">
+                  <label>检验情况 <span class="req">*</span></label>
+                  <div class="seg-pick" id="f_insp">
+                    <button type="button" class="on" data-v="缺料">缺料</button>
+                    <button type="button" data-v="合格">合格</button>
+                    <button type="button" data-v="不合格">不合格</button>
+                  </div>
+                </div>
+                <div class="f-field full" id="issueWrap" style="display:none">
+                  <label>不合格原因 <span class="req">*</span> <span class="opt">（已选，可点击修改）</span></label>
+                  <div id="reasonSum" style="display:flex;flex-wrap:wrap;margin-bottom:8px;min-height:26px"></div>
+                  <button class="btn ghost sm" type="button" id="btnEditReason">✏️ 选择不合格原因</button>
+                </div>
+                <div class="f-field">
+                  <label>处理方式</label>
+                  <select class="f-input" id="f_handle">
+                    <option>换新</option><option>返修</option><option>退货退款</option><option>无需处理</option><option>待定</option>
+                  </select>
+                </div>
+                <div class="f-field"><label>备注 <span class="opt">（选填）</span></label><input class="f-input" type="text" id="f_note" placeholder="如：客户急单 / 批次问题"></div>
+              </div>
+              <div class="m-foot" style="padding:0;border:none">
+                <button class="btn ghost" type="button" id="btnReset">清空</button>
+                <button class="btn primary" type="submit" id="btnSave">保存登记</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>退货记录</h3><span class="ch-sub" id="retCount">共 0 笔</span></div>
+          <div class="records-tools">
+            <div class="searchbox" style="flex:1;max-width:280px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="text" id="q_kw" placeholder="搜索订单号 / 客户 / 型号 / 备注"></div>
+            <select class="select" id="q_insp">
+              <option value="">全部检验</option><option>缺料</option><option>合格</option><option>不合格</option>
+            </select>
+            <select class="select" id="q_model"><option value="">全部型号</option></select>
+          </div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr>
+                <th>退货日期</th><th>订单号</th><th>客户 / 来源</th><th>型号</th><th>工艺</th>
+                <th class="th-num">数量</th><th>供应商</th><th>检验</th><th>不合格原因</th><th>处理</th><th class="th-act">操作</th>
+              </tr></thead>
+              <tbody id="retBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="retEmpty"></div>
+          <div class="records-foot"><span class="rf-info" id="retInfo">共 0 笔</span><div class="pager" id="retPager"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图2：换新跟踪 ===== -->
+      <section class="view" id="vTrk">
+        <div class="page-head">
+          <div class="ph-main"><h2>换新跟踪</h2><p>关联每笔退货，跟踪换新/返修进度（合格或无需处理视为无需换新）</p></div>
+        </div>
+        <div class="stats-row" id="trkStats"></div>
+        <div class="card">
+          <div class="card-head"><h3>换新进度总览</h3><span class="ch-sub" id="trkCount">共 0 笔</span></div>
+          <div class="records-tools">
+            <div class="seg" id="trkSeg">
+              <button class="seg-btn active" data-v="">全部</button>
+              <button class="seg-btn" data-v="待换新">待换新</button>
+              <button class="seg-btn" data-v="部分换新">部分换新</button>
+              <button class="seg-btn" data-v="已换新">已换新</button>
+              <button class="seg-btn" data-v="无需换新">无需换新</button>
+            </div>
+            <div class="tools-right">
+              <div class="searchbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input type="text" id="q_trk" placeholder="型号 / 客户 / 订单号"></div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr>
+                <th>退货日期</th><th>订单号</th><th>客户</th><th>型号</th>
+                <th class="th-num">应换</th><th class="th-num">已换</th><th class="th-num">未换</th>
+                <th>进度</th><th>状态</th><th class="th-act">操作</th>
+              </tr></thead>
+              <tbody id="trkBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="trkEmpty"></div>
+          <div class="records-foot"><span class="rf-info" id="trkInfo">共 0 笔</span><div class="pager" id="trkPager"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图3：统计查询 ===== -->
+      <section class="view" id="vSta">
+        <div class="page-head">
+          <div class="ph-main"><h2>统计查询</h2><p>按时间段 / 型号 / 客户 / 处理方式汇总分析</p></div>
+          <div class="ph-act"><button class="btn ghost sm" id="btnExportSta">导出明细 CSV</button></div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-body" style="padding:14px 20px">
+            <div class="records-tools" style="padding:0;border:none;gap:12px">
+              <div class="field-inline"><label>开始日期</label><input class="select" type="date" id="s_from"></div>
+              <div class="field-inline"><label>结束日期</label><input class="select" type="date" id="s_to"></div>
+              <div class="field-inline"><label>型号</label><select class="select" id="s_model"><option value="">全部</option></select></div>
+              <div class="field-inline"><label>客户</label><select class="select" id="s_customer"><option value="">全部</option></select></div>
+              <div class="field-inline"><label>处理方式</label><select class="select" id="s_handle"><option value="">全部</option></select></div>
+              <button class="btn ghost sm" id="btnResetSta">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-row" id="staStats"></div>
+
+        <div class="charts-grid">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-head"><h3>各型号退货分布</h3></div>
+            <div class="card-body"><div class="chart-box" id="chartModel" style="height:280px"></div></div>
+          </div>
+          <div class="card" style="margin-bottom:0">
+            <div class="card-head"><h3>不合格原因分布</h3><span class="ch-sub">按涉及笔数</span></div>
+            <div class="card-body"><div class="chart-box" id="chartReason" style="height:280px"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>筛选结果明细</h3><span class="ch-sub" id="staCount">共 0 笔</span></div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr>
+                <th>退货日期</th><th>订单号</th><th>客户</th><th>型号</th><th>工艺</th>
+                <th class="th-num">数量</th><th>检验</th><th>不合格原因</th><th>处理方式</th><th>换新状态</th>
+              </tr></thead>
+              <tbody id="staBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="staEmpty"></div>
+          <div class="records-foot"><span class="rf-info" id="staInfo">共 0 笔</span><div class="pager" id="staPager"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图4：型号管理 ===== -->
+      <section class="view" id="vModel">
+        <div class="page-head">
+          <div class="ph-main"><h2>型号管理</h2><p>维护胸章型号，支持新增、编辑、删除</p></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="modelFormTitle">新增胸章型号</h3></div>
+          <div class="card-body">
+            <form id="modelForm" autocomplete="off">
+              <div class="f-row">
+                <div class="f-field"><label>型号名称 <span class="req">*</span></label><input class="f-input" type="text" id="m_name" placeholder="如 D58 圆形"></div>
+                <div class="f-field"><label>说明</label><input class="f-input" type="text" id="m_note" placeholder="选填，如 58mm 圆形马口铁"></div>
+              </div>
+              <div class="m-foot" style="padding:0;border:none">
+                <button class="btn ghost" type="button" id="modelReset">清空</button>
+                <button class="btn primary" type="submit" id="modelSave">新增型号</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>在管型号</h3><span class="ch-sub" id="modelCount">共 0 个</span></div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr><th>型号</th><th class="th-num">退货笔数</th><th class="th-num">退货数量</th><th>说明</th><th class="th-act">操作</th></tr></thead>
+              <tbody id="modelBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="modelEmpty"></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<!-- 不合格原因弹窗 -->
+<div class="modal-mask" id="reasonMask">
+  <div class="modal" style="width:480px">
+    <div class="m-head"><h3>选择不合格原因</h3><span class="m-tag">可多选 · 至少 1 项</span>
+      <button class="m-close" id="reasonClose">✕</button></div>
+    <div class="m-body">
+      <div class="info-strip" style="margin-bottom:14px">请勾选该笔胸章退货的具体问题，用于后续质量统计与追溯。</div>
+      <div class="reason-grid" id="reasonOpts"></div>
+      <div class="f-field full" style="margin-top:16px">
+        <label>补充说明 <span class="opt">（选填）</span></label>
+        <textarea class="f-input" id="f_reason_extra" placeholder="补充细节，如：整批次颜色偏差明显……"></textarea>
+      </div>
+      <p class="f-hint" id="reasonMsg" style="color:var(--red);display:none">请至少勾选 1 项原因</p>
+    </div>
+    <div class="m-foot">
+      <button class="btn ghost" id="reasonCancel">取消</button>
+      <button class="btn primary" id="reasonOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 换新登记弹窗 -->
+<div class="modal-mask" id="repMask">
+  <div class="modal" style="width:520px">
+    <div class="m-head"><h3 id="repTitle">换新登记</h3><button class="m-close" id="repClose">✕</button></div>
+    <div class="m-body">
+      <div class="info-strip" id="repInfo"></div>
+      <div class="f-row">
+        <div class="f-field"><label>换新日期 <span class="req">*</span></label><input class="f-input" type="date" id="r_date"></div>
+        <div class="f-field"><label>换新数量 <span class="req">*</span></label><input class="f-input" type="number" id="r_qty" min="1" step="1" value="1"></div>
+        <div class="f-field"><label>换新型号</label><input class="f-input" type="text" id="r_model" placeholder="默认与退货型号一致"></div>
+        <div class="f-field"><label>备注</label><input class="f-input" type="text" id="r_note" placeholder="物流单号 / 说明"></div>
+      </div>
+      <div id="repHist"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn ghost" id="repCancel">关闭</button>
+      <button class="btn primary" id="repSave">确认换新</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认框（共享） -->
+<div class="modal-mask" id="confirmMask">
+  <div class="modal" style="width:400px">
+    <div class="m-head"><h3>请确认</h3></div>
+    <div class="m-body"><p id="confirmText" style="font-size:13.5px;color:var(--muted);line-height:1.7"></p></div>
+    <div class="m-foot">
+      <button class="btn ghost" onclick="LH.resolveConfirm(false)">取消</button>
+      <button class="btn danger" id="confirmOk" onclick="LH.resolveConfirm(true)">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="_shared/js/core.js"></script>
+<script src="_shared/js/app-shell.js"></script>
+<script src="_shared/js/cloud.js"></script>
+<script src="_shared/js/cloud-ui.js"></script>
+<script src="_shared/js/modules.js"></script>
+<script src="_shared/js/seed.js"></script>
+<script src="_shared/js/echarts.min.js"></script>
+<script src="assets/badge.js"></script>
+</body>
+</html>
