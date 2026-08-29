@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>喷头库存管理 · 台账中心</title>
+<link rel="stylesheet" href="_shared/css/theme.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="index.html">
+      <div class="brand-mark" id="brandMark">🖨️</div>
+      <div class="brand-text">
+        <span class="b-name" id="brandName">喷头库存管理</span>
+        <span class="b-sub" id="brandSub">PRINTHEAD INVENTORY</span>
+      </div>
+    </a>
+    <nav class="side-nav" id="sideNav"></nav>
+    <div class="side-foot">
+      <div class="sf-row"><span>在管型号</span><b id="sfN">0</b></div>
+      <div class="sf-row"><span>在库总量</span><b id="sfQ">0</b></div>
+      <div class="sf-row"><span>库存预警</span><b id="sfLow" style="color:var(--red)">0</b></div>
+      <div class="side-ver">v1.0.0 · LOCAL</div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="tb-burger" id="tbBurger" aria-label="菜单">☰</button>
+      <div class="tb-title">
+        <h1 id="pageTitle">库存概览</h1>
+        <span class="tb-sub" id="pageSub">各型号实时库存与低库存预警</span>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="tb-actions">
+        <button class="btn ghost sm" id="btnCloud">☁️ <span>本地</span></button>
+        <button class="btn ghost sm" id="btnSeed">载入示例</button>
+        <a class="btn ghost sm" href="index.html">← 返回主页</a>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== 视图1：库存概览 ===== -->
+      <section class="view active" id="vStock">
+        <div class="page-head">
+          <div class="ph-main"><h2>库存概览</h2><p>库存 = 入库总量 − 出库总量；低于预警阈值会标红提示</p></div>
+          <div class="ph-act">
+            <button class="btn primary sm" id="btnQuickIn">＋ 快速入库</button>
+            <button class="btn ghost sm" id="btnQuickOut">− 快速出库</button>
+          </div>
+        </div>
+        <div class="stats-row" id="stockStats"></div>
+        <div class="card">
+          <div class="card-head">
+            <h3>各型号实时库存</h3>
+            <span class="ch-sub" id="stockTip">正常</span>
+          </div>
+          <div class="card-body"><div class="stock-grid" id="stockGrid"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图2：入库管理 ===== -->
+      <section class="view" id="vIn">
+        <div class="page-head">
+          <div class="ph-main"><h2>入库管理</h2><p>记录入库时间、订单号、型号、数量、批次号、供应商、单价</p></div>
+          <div class="ph-act"><button class="btn ghost sm" id="btnExportIn">导出 CSV</button></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="inFormTitle">喷头入库登记</h3></div>
+          <div class="card-body">
+            <form id="inForm" autocomplete="off">
+              <div class="f-row">
+                <div class="f-field"><label>入库日期 <span class="req">*</span></label><input class="f-input" type="date" id="in_date"></div>
+                <div class="f-field"><label>订单号 <span class="req">*</span></label><input class="f-input" type="text" id="in_order" placeholder="如 RK20260826001"></div>
+                <div class="f-field"><label>型号 <span class="req">*</span></label><select class="f-input" id="in_model"></select></div>
+                <div class="f-field"><label>数量 <span class="req">*</span></label><input class="f-input" type="number" id="in_qty" min="1" step="1" value="1"></div>
+                <div class="f-field"><label>批次号</label><input class="f-input" type="text" id="in_batch" placeholder="如 B20260826-01"></div>
+                <div class="f-field"><label>供应商</label><input class="f-input" type="text" id="in_supplier" placeholder="如 东莞"></div>
+                <div class="f-field"><label>单价（¥）</label><input class="f-input" type="number" id="in_price" min="0" step="0.01" placeholder="0.00"></div>
+                <div class="f-field"><label>备注</label><input class="f-input" type="text" id="in_note" placeholder="选填"></div>
+              </div>
+              <div class="m-foot" style="padding:0;border:none">
+                <button class="btn ghost" type="button" id="inReset">清空</button>
+                <button class="btn primary" type="submit" id="inSave">确认入库</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>入库记录</h3><span class="ch-sub" id="inCount">共 0 条</span></div>
+          <div class="records-tools">
+            <div class="searchbox" style="flex:1;max-width:260px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="text" id="q_in" placeholder="搜索订单号 / 型号 / 批次 / 供应商"></div>
+            <select class="select" id="q_in_model"><option value="">全部型号</option></select>
+          </div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr>
+                <th>入库日期</th><th>订单号</th><th>型号</th><th class="th-num">数量</th>
+                <th>批次号</th><th>供应商</th><th class="th-num">单价</th><th>备注</th><th class="th-act">操作</th>
+              </tr></thead>
+              <tbody id="inBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="inEmpty"></div>
+          <div class="records-foot"><span class="rf-info" id="inInfo">共 0 条</span><div class="pager" id="inPager"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图3：出库管理 ===== -->
+      <section class="view" id="vOut">
+        <div class="page-head">
+          <div class="ph-main"><h2>出库管理</h2><p>记录出库时间、订单号、型号、数量、领用人/部门、用途</p></div>
+          <div class="ph-act"><button class="btn ghost sm" id="btnExportOut">导出 CSV</button></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="outFormTitle">喷头出库登记</h3></div>
+          <div class="card-body">
+            <form id="outForm" autocomplete="off">
+              <div class="f-row">
+                <div class="f-field"><label>出库日期 <span class="req">*</span></label><input class="f-input" type="date" id="out_date"></div>
+                <div class="f-field"><label>订单号 <span class="req">*</span></label><input class="f-input" type="text" id="out_order" placeholder="如 CK20260826001"></div>
+                <div class="f-field"><label>型号 <span class="req">*</span></label><select class="f-input" id="out_model"></select></div>
+                <div class="f-field"><label>数量 <span class="req">*</span></label><input class="f-input" type="number" id="out_qty" min="1" step="1" value="1"></div>
+                <div class="f-field"><label>领用人 / 部门</label><input class="f-input" type="text" id="out_user" placeholder="如 张三 / 生产部"></div>
+                <div class="f-field"><label>用途</label><input class="f-input" type="text" id="out_purpose" placeholder="如 更换维修"></div>
+                <div class="f-field full"><label>备注</label><input class="f-input" type="text" id="out_note" placeholder="选填"></div>
+              </div>
+              <div class="m-foot" style="padding:0;border:none">
+                <button class="btn ghost" type="button" id="outReset">清空</button>
+                <button class="btn primary" type="submit" id="outSave">确认出库</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>出库记录</h3><span class="ch-sub" id="outCount">共 0 条</span></div>
+          <div class="records-tools">
+            <div class="searchbox" style="flex:1;max-width:260px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="text" id="q_out" placeholder="搜索订单号 / 型号 / 领用人 / 用途"></div>
+            <select class="select" id="q_out_model"><option value="">全部型号</option></select>
+          </div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr>
+                <th>出库日期</th><th>订单号</th><th>型号</th><th class="th-num">数量</th>
+                <th>领用人/部门</th><th>用途</th><th>备注</th><th class="th-act">操作</th>
+              </tr></thead>
+              <tbody id="outBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="outEmpty"></div>
+          <div class="records-foot"><span class="rf-info" id="outInfo">共 0 条</span><div class="pager" id="outPager"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图4：型号管理 ===== -->
+      <section class="view" id="vModel">
+        <div class="page-head">
+          <div class="ph-main"><h2>型号管理</h2><p>维护喷头型号与库存预警阈值，支持新增、编辑、删除</p></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="modelFormTitle">新增喷头型号</h3></div>
+          <div class="card-body">
+            <form id="modelForm" autocomplete="off">
+              <div class="f-row">
+                <div class="f-field"><label>型号名称 <span class="req">*</span></label><input class="f-input" type="text" id="m_name" placeholder="如 XP600"></div>
+                <div class="f-field"><label>预警阈值（台）</label><input class="f-input" type="number" id="m_threshold" min="0" step="1" value="5"></div>
+                <div class="f-field full"><label>说明</label><input class="f-input" type="text" id="m_note" placeholder="选填"></div>
+              </div>
+              <div class="m-foot" style="padding:0;border:none">
+                <button class="btn ghost" type="button" id="modelReset">清空</button>
+                <button class="btn primary" type="submit" id="modelSave">新增型号</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>在管型号</h3><span class="ch-sub" id="modelCount">共 0 个</span></div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr><th>型号</th><th class="th-num">预警阈值</th><th class="th-num">当前库存</th><th>说明</th><th class="th-act">操作</th></tr></thead>
+              <tbody id="modelBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="modelEmpty"></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图5：记录查询 ===== -->
+      <section class="view" id="vQuery">
+        <div class="page-head">
+          <div class="ph-main"><h2>出入库记录查询</h2><p>按操作类型、型号、时间范围筛选，入库出库合并展示</p></div>
+          <div class="ph-act"><button class="btn ghost sm" id="btnExportQuery">导出 CSV</button></div>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:14px 20px">
+            <div class="records-tools" style="padding:0;border:none;gap:12px">
+              <div class="seg" id="qTypeSeg">
+                <button class="seg-btn active" data-v="">全部</button>
+                <button class="seg-btn" data-v="入库">入库</button>
+                <button class="seg-btn" data-v="出库">出库</button>
+              </div>
+              <div class="field-inline"><label>型号</label><select class="select" id="q_q_model"><option value="">全部</option></select></div>
+              <div class="field-inline"><label>开始日期</label><input class="select" type="date" id="q_q_from"></div>
+              <div class="field-inline"><label>结束日期</label><input class="select" type="date" id="q_q_to"></div>
+              <button class="btn ghost sm" id="btnResetQuery">重置</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>查询结果</h3><span class="ch-sub" id="qCount">共 0 条</span></div>
+          <div class="table-wrap">
+            <table class="rt">
+              <thead><tr><th>操作类型</th><th>日期</th><th>订单号</th><th>型号</th><th class="th-num">数量</th><th>明细</th><th>备注</th></tr></thead>
+              <tbody id="qBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="qEmpty"></div>
+          <div class="records-foot"><span class="rf-info" id="qInfo">共 0 条</span><div class="pager" id="qPager"></div></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<!-- 确认框（共享） -->
+<div class="modal-mask" id="confirmMask">
+  <div class="modal" style="width:400px">
+    <div class="m-head"><h3>请确认</h3></div>
+    <div class="m-body"><p id="confirmText" style="font-size:13.5px;color:var(--muted);line-height:1.7"></p></div>
+    <div class="m-foot">
+      <button class="btn ghost" onclick="LH.resolveConfirm(false)">取消</button>
+      <button class="btn danger" id="confirmOk" onclick="LH.resolveConfirm(true)">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="_shared/js/core.js"></script>
+<script src="_shared/js/app-shell.js"></script>
+<script src="_shared/js/cloud.js"></script>
+<script src="_shared/js/cloud-ui.js"></script>
+<script src="_shared/js/modules.js"></script>
+<script src="_shared/js/seed.js"></script>
+<script src="assets/printhead.js"></script>
+</body>
+</html>
