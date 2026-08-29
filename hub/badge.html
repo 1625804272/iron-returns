@@ -32,7 +32,7 @@
       <button class="tb-burger" id="tbBurger" aria-label="菜单">☰</button>
       <div class="tb-title">
         <h1 id="pageTitle">退货登记</h1>
-        <span class="tb-sub" id="pageSub">录入每笔胸章退货的客户、型号、工艺与检验情况</span>
+        <span class="tb-sub" id="pageSub">录入每笔胸章退货的客户、型号、材料与检验情况</span>
       </div>
       <div class="tb-spacer"></div>
       <div class="tb-actions">
@@ -67,7 +67,7 @@
                   <datalist id="custList"></datalist>
                 </div>
                 <div class="f-field"><label>型号 <span class="req">*</span></label><select class="f-input" id="f_model"></select></div>
-                <div class="f-field"><label>工艺</label>
+                <div class="f-field"><label>材料</label>
                   <select class="f-input" id="f_craft">
                     <option>UV打印</option><option>丝印</option><option>滴胶</option><option>冲压</option><option>腐蚀</option><option>其他</option>
                   </select>
@@ -119,7 +119,7 @@
           <div class="table-wrap">
             <table class="rt">
               <thead><tr>
-                <th>退货日期</th><th>订单号</th><th>客户 / 来源</th><th>型号</th><th>工艺</th>
+                <th>退货日期</th><th>订单号</th><th>客户 / 来源</th><th>型号</th><th>材料</th>
                 <th class="th-num">数量</th><th>供应商</th><th>检验</th><th>不合格原因</th><th>处理</th><th class="th-act">操作</th>
               </tr></thead>
               <tbody id="retBody"></tbody>
@@ -204,7 +204,7 @@
           <div class="table-wrap">
             <table class="rt">
               <thead><tr>
-                <th>退货日期</th><th>订单号</th><th>客户</th><th>型号</th><th>工艺</th>
+                <th>退货日期</th><th>订单号</th><th>客户</th><th>型号</th><th>材料</th>
                 <th class="th-num">数量</th><th>检验</th><th>不合格原因</th><th>处理方式</th><th>换新状态</th>
               </tr></thead>
               <tbody id="staBody"></tbody>
