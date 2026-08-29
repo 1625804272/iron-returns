@@ -13,7 +13,7 @@
   var K = LH.KEYS.badge;
   var REASONS = ['印刷模糊', '边缘毛刺', '别针松动', '颜色偏差', '尺寸不符', '划痕脏污'];
   var HANDLES = ['换新', '返修', '退货退款', '无需处理', '待定'];
-  var CRAFTS = ['UV打印', '丝印', '滴胶', '冲压', '腐蚀', '其他'];
+  var MATERIALS = ['塑料', '铁'];
   var PRESET_MODELS = ['D58 圆形', 'D75 圆形', 'R60×90 方形', 'MAG 磁吸款', 'PIN 别针款', 'CUSTOM 异形'];
 
   /* ---------- 状态 ---------- */
@@ -169,7 +169,7 @@
     LH.byId('f_date').value = LH.today();
     LH.byId('f_qty').value = 1;
     LH.byId('f_supplier').value = '东莞徽章厂';
-    LH.byId('f_craft').value = CRAFTS[0];
+    LH.byId('f_craft').value = MATERIALS[0];
     LH.byId('f_handle').value = HANDLES[0];
     setSeg('f_insp', '缺料');
     LH.byId('issueWrap').style.display = 'none';
@@ -216,7 +216,7 @@
     LH.byId('f_express').value = r.express || '';
     LH.byId('f_customer').value = r.customer || '';
     LH.byId('f_model').value = r.model || '';
-    LH.byId('f_craft').value = r.craft || CRAFTS[0];
+    LH.byId('f_craft').value = r.craft || MATERIALS[0];
     LH.byId('f_qty').value = r.qty;
     LH.byId('f_supplier').value = r.supplier || '';
     setSeg('f_insp', r.insp || '缺料');
@@ -705,7 +705,7 @@
       LH.byId('issueWrap').style.display = show ? '' : 'none';
       if (show && !reasonSel.length) openReason();
     });
-    LH.byId('f_craft').innerHTML = CRAFTS.map(function (c) { return '<option>' + c + '</option>'; }).join('');
+    LH.byId('f_craft').innerHTML = MATERIALS.map(function (c) { return '<option>' + c + '</option>'; }).join('');
     LH.byId('f_handle').innerHTML = HANDLES.map(function (c) { return '<option>' + c + '</option>'; }).join('');
     LH.byId('btnEditReason').addEventListener('click', openReason);
 
