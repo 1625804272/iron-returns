@@ -68,12 +68,12 @@
       return { id: 'bgm' + i, name: n, note: '' };
     });
     var returns = [
-      { date: ago(25), orderNo: 'XA26072501', express: 'YT8821001', customer: '广州印花纺织科技', model: 'D58 圆形', craft: 'UV打印', qty: 20, supplier: '东莞徽章厂', insp: '不合格', reasons: ['印刷模糊'], handle: '换新', issue: '图案偏色', note: '客户急单' },
-      { date: ago(21), orderNo: 'XA26072902', express: '', customer: '义乌锦纶服饰制造', model: 'MAG 磁吸款', craft: '滴胶', qty: 12, supplier: '东莞徽章厂', insp: '合格', reasons: [], handle: '无需处理', issue: '', note: '仅退货退款' },
-      { date: ago(17), orderNo: 'XA26080203', express: 'YT8821003', customer: '杭州数码印花厂', model: 'R60×90 方形', craft: '丝印', qty: 8, supplier: '温州工艺厂', insp: '不合格', reasons: ['边缘毛刺', '划痕脏污'], handle: '返修', issue: '边缘割手', note: '' },
-      { date: ago(12), orderNo: 'XA26080704', express: '', customer: '苏州纺织印染集团', model: 'PIN 别针款', craft: '冲压', qty: 15, supplier: '东莞徽章厂', insp: '不合格', reasons: ['别针松动'], handle: '换新', issue: '别针脱落', note: '批次问题' },
-      { date: ago(7),  orderNo: 'XA26081205', express: 'YT8821005', customer: '中山大涌纺织制衣', model: 'D75 圆形', craft: 'UV打印', qty: 6, supplier: '东莞徽章厂', insp: '缺料', reasons: [], handle: '待定', issue: '', note: '等待物料' },
-      { date: ago(3),  orderNo: 'XA26081606', express: 'YT8821006', customer: '福建长乐经编纺织', model: 'CUSTOM 异形', craft: '滴胶', qty: 10, supplier: '温州工艺厂', insp: '不合格', reasons: ['颜色偏差'], handle: '换新', issue: '与色卡偏差大', note: '' }
+      { date: ago(25), orderNo: 'XA26072501', express: 'YT8821001', customer: '广州印花纺织科技', model: 'D58 圆形', craft: '塑料', qty: 20, supplier: '东莞徽章厂', insp: '不合格', reasons: ['印刷模糊'], handle: '换新', issue: '图案偏色', note: '客户急单' },
+      { date: ago(21), orderNo: 'XA26072902', express: '', customer: '义乌锦纶服饰制造', model: 'MAG 磁吸款', craft: '铁', qty: 12, supplier: '东莞徽章厂', insp: '合格', reasons: [], handle: '无需处理', issue: '', note: '仅退货退款' },
+      { date: ago(17), orderNo: 'XA26080203', express: 'YT8821003', customer: '杭州数码印花厂', model: 'R60×90 方形', craft: '塑料', qty: 8, supplier: '温州工艺厂', insp: '不合格', reasons: ['边缘毛刺', '划痕脏污'], handle: '返修', issue: '边缘割手', note: '' },
+      { date: ago(12), orderNo: 'XA26080704', express: '', customer: '苏州纺织印染集团', model: 'PIN 别针款', craft: '铁', qty: 15, supplier: '东莞徽章厂', insp: '不合格', reasons: ['别针松动'], handle: '换新', issue: '别针脱落', note: '批次问题' },
+      { date: ago(7),  orderNo: 'XA26081205', express: 'YT8821005', customer: '中山大涌纺织制衣', model: 'D75 圆形', craft: '塑料', qty: 6, supplier: '东莞徽章厂', insp: '缺料', reasons: [], handle: '待定', issue: '', note: '等待物料' },
+      { date: ago(3),  orderNo: 'XA26081606', express: 'YT8821006', customer: '福建长乐经编纺织', model: 'CUSTOM 异形', craft: '铁', qty: 10, supplier: '温州工艺厂', insp: '不合格', reasons: ['颜色偏差'], handle: '换新', issue: '与色卡偏差大', note: '' }
     ].map(function (r) { r.id = uid(); return r; });
 
     // 换新记录
