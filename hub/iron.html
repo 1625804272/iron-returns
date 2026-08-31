@@ -48,7 +48,7 @@
       <!-- ===== 视图1：退货登记 ===== -->
       <section class="view active" id="vReg">
         <div class="page-head">
-          <div class="ph-main"><h2>退货登记</h2><p>型号与颜色联动，选「不合格」需勾选具体原因</p></div>
+          <div class="ph-main"><h2>退货登记</h2><p>型号与颜色联动，选「不合格」需勾选具体原因 · <span style="color:var(--primary);font-weight:600">💡 点击下方任一行记录即可弹出编辑窗口</span></p></div>
           <div class="ph-act">
             <button class="btn ghost sm" id="btnExport">⬇️ 导出退货 CSV</button>
             <button class="btn ghost sm" id="btnExportStaReg">📤 导出补发 CSV</button>
@@ -152,7 +152,7 @@
             <select class="select" id="q_model"><option value="">全部型号</option></select>
           </div>
           <div class="table-wrap">
-            <table class="rt">
+            <table class="rt iron-tbl">
               <thead><tr>
                 <th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th>
                 <th>数量</th><th>供应商</th><th>检验</th><th>不合格原因</th><th class="th-num">补发进度</th><th class="th-act">操作</th>
@@ -191,7 +191,7 @@
             </div>
           </div>
           <div class="table-wrap">
-            <table class="rt">
+            <table class="rt iron-tbl">
               <thead><tr>
                 <th>退货日期</th><th>订单号</th><th>型号</th><th>颜色</th><th>供应商</th>
                 <th class="th-num">应补</th><th class="th-num">已补</th><th class="th-num">未补</th>
