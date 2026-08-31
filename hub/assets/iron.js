@@ -84,8 +84,8 @@
     // 型号 / 颜色联动
     var ms = LH.byId('f_model');
     ms.innerHTML = Object.keys(MODEL_COLORS).map(function (m) { return '<option>' + m + '</option>'; }).join('');
-    ms.addEventListener('change', function () { fillColors(); });
-    fillColors();
+    ms.addEventListener('change', function () { fillColors('f_'); });
+    fillColors('f_');
     LH.byId('f_plug').innerHTML = PLUGS.map(function (p) { return '<option>' + p + '</option>'; }).join('');
 
     // 分段选择（电压 / 检验）
@@ -128,10 +128,10 @@
       x.classList.toggle('on', x.getAttribute('data-v') === v);
     });
   }
-  function fillColors(sel) {
-    var m = LH.byId('f_model').value;
+  function fillColors(prefix, sel) {
+    var m = LH.byId(prefix + 'model').value;
     var colors = MODEL_COLORS[m] || [];
-    LH.byId('f_color').innerHTML = colors.map(function (c) {
+    LH.byId(prefix + 'color').innerHTML = colors.map(function (c) {
       return '<option' + (c === sel ? ' selected' : '') + '>' + c + '</option>';
     }).join('');
   }
@@ -191,47 +191,75 @@
   function resetForm() {
     editId = null;
     reasonSel = [];
-    LH.byId('formTitle').textContent = '新增退货登记';
-    LH.byId('btnSave').textContent = '保存登记';
-    var br = LH.byId('btnReset');
-    if (br) { br.textContent = '清空'; br.classList.remove('danger-soft'); }
     LH.byId('retForm').reset();
     LH.byId('f_date').value = LH.today();
     LH.byId('f_qty').value = 1;
     LH.byId('f_supplier').value = '东莞';
     LH.byId('f_model').value = Object.keys(MODEL_COLORS)[0];
-    fillColors();
+    fillColors('f_');
     setSeg('f_volt', '220V');
     setSeg('f_insp', '缺料');
     LH.byId('issueWrap').style.display = 'none';
     renderReasonSum();
   }
   function editRecord(id) {
-    var r = returns[indexOf(returns, id)];
+    var r = returns[idxOf(returns, id)];
     if (!r) return;
     editId = id;
-    LH.byId('formTitle').textContent = '编辑退货记录（' + (r.orderNo || id.slice(0, 6)) + '）';
-    LH.byId('btnSave').textContent = '保存修改';
-    var br = LH.byId('btnReset');
-    if (br) { br.textContent = '取消编辑'; br.classList.add('danger-soft'); }
-    LH.byId('f_date').value = r.date || '';
-    LH.byId('f_order').value = r.orderNo || '';
-    LH.byId('f_express').value = r.express || '';
-    LH.byId('f_model').value = r.model;
-    fillColors(r.color);
-    setSeg('f_volt', r.volt || '220V');
-    LH.byId('f_plug').value = r.plug || '国标';
-    LH.byId('f_qty').value = r.qty;
-    LH.byId('f_supplier').value = r.supplier || '';
-    setSeg('f_insp', r.insp || '缺料');
+    // 打开独立编辑弹窗（不再在登记表内联编辑）
+    LH.byId('editFormTitle').textContent = '编辑退货记录（' + (r.orderNo || id.slice(0, 6)) + '）';
+    LH.byId('e_date').value = r.date || '';
+    LH.byId('e_order').value = r.orderNo || '';
+    LH.byId('e_express').value = r.express || '';
+    LH.byId('e_model').innerHTML = Object.keys(MODEL_COLORS).map(function (m) { return '<option>' + m + '</option>'; }).join('');
+    fillColors('e_', r.color);
+    LH.byId('e_model').value = r.model;
+    setSeg('e_volt', r.volt || '220V');
+    LH.byId('e_plug').value = r.plug || '国标';
+    LH.byId('e_qty').value = r.qty;
+    LH.byId('e_supplier').value = r.supplier || '';
+    setSeg('e_insp', r.insp || '缺料');
     reasonSel = (r.insp === '不合格') ? (r.reasons || []).slice() : [];
-    LH.byId('f_reason_extra').value = (r.insp === '不合格') ? (r.issue || '') : '';
-    LH.byId('issueWrap').style.display = (r.insp === '不合格') ? '' : 'none';
-    LH.byId('f_note').value = r.note || '';
+    LH.byId('e_reason_extra').value = (r.insp === '不合格') ? (r.issue || '') : '';
+    LH.byId('e_issueWrap').style.display = (r.insp === '不合格') ? '' : 'none';
+    LH.byId('e_note').value = r.note || '';
     renderReasonSum();
-    LH.shell.switchView('vReg');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    LH.openModal('editMask');
   }
+  function saveEdit() {
+    if (!editId) return;
+    var insp = segVal('e_insp');
+    var rec = {
+      id: editId,
+      date: LH.byId('e_date').value,
+      orderNo: LH.byId('e_order').value.trim(),
+      express: LH.byId('e_express').value.trim(),
+      model: LH.byId('e_model').value,
+      color: LH.byId('e_color').value,
+      volt: segVal('e_volt'),
+      plug: LH.byId('e_plug').value,
+      qty: parseInt(LH.byId('e_qty').value, 10) || 0,
+      supplier: LH.byId('e_supplier').value.trim(),
+      insp: insp,
+      reasons: insp === '不合格' ? reasonSel.slice() : [],
+      issue: insp === '不合格' ? LH.byId('e_reason_extra').value.trim() : '',
+      note: LH.byId('e_note').value.trim()
+    };
+    if (!rec.date) return bad('e_date', '请选择退货日期');
+    if (!rec.orderNo) return bad('e_order', '请填写订单号');
+    if (rec.qty < 1) return bad('e_qty', '退货数量必须 ≥ 1');
+    if (!rec.supplier) return bad('e_supplier', '请填写供应商');
+    if (insp === '不合格' && !rec.reasons.length) { LH.toast('请选择不合格原因'); openReason(); return; }
+    var i = indexOf(returns, editId);
+    if (i < 0) return;
+    returns[i] = rec;
+    save();
+    editId = null;
+    LH.closeModal('editMask');
+    renderAll();
+    LH.toast('已保存修改');
+  }
+  function closeEdit() { editId = null; LH.closeModal('editMask'); }
   function delRecord(id) {
     var r = returns[indexOf(returns, id)];
     if (!r) return;
@@ -293,19 +321,17 @@
     LH.byId('retBody').innerHTML = pg.rows.map(function (r) {
       var st = status(r);
       var pct = Math.min(100, Math.round(st.done / (Number(r.qty) || 1) * 100));
-      return '<tr data-row="' + r.id + '">' +
-        '<td class="mono">' + LH.esc(r.date) + '</td>' +
-        '<td class="td-no">' + LH.esc(r.orderNo || '—') + '</td>' +
-        '<td class="td-muted">' + LH.esc(r.express || '—') + '</td>' +
-        '<td class="td-strong">' + LH.esc(r.model) + '</td>' +
-        '<td>' + LH.esc(r.color) + '</td>' +
-        '<td class="td-muted">' + LH.esc(r.volt) + '</td>' +
-        '<td class="td-num">' + r.qty + '</td>' +
-        '<td class="td-muted">' + LH.esc(r.supplier) + '</td>' +
-        '<td>' + inspPill(r.insp) + '</td>' +
-        '<td class="td-muted td-ellipsis" title="' + LH.esc(reasonText(r)) + '">' + LH.esc(reasonText(r)) + '</td>' +
-        '<td class="td-num">' + st.done + '/' + r.qty + ' <span class="td-muted" style="font-weight:500">(' + pct + '%)</span></td>' +
-        '<td class="td-act">' +
+      return '<tr>' +
+        '<td data-label="退货日期" class="mono">' + LH.esc(r.date) + '</td>' +
+        '<td data-label="订单号" class="td-no">' + LH.esc(r.orderNo || '—') + '</td>' +
+        '<td data-label="快递单号" class="td-muted">' + LH.esc(r.express || '—') + '</td>' +
+        '<td data-label="型号" class="td-strong">' + LH.esc(r.model) + ' ' + LH.esc(r.color) + ' ' + LH.esc(r.volt) + ' ' + LH.esc(r.plug) + '</td>' +
+        '<td data-label="数量" class="td-num">' + r.qty + '</td>' +
+        '<td data-label="供应商" class="td-muted">' + LH.esc(r.supplier) + '</td>' +
+        '<td data-label="检验">' + inspPill(r.insp) + '</td>' +
+        '<td data-label="不合格原因" class="td-muted td-ellipsis" title="' + LH.esc(reasonText(r)) + '">' + LH.esc(reasonText(r)) + '</td>' +
+        '<td data-label="补发进度" class="td-num">' + st.done + '/' + r.qty + ' <span class="td-muted" style="font-weight:500">(' + pct + '%)</span></td>' +
+        '<td data-label="操作" class="td-act">' +
         '<button class="row-btn" data-edit="' + r.id + '" title="编辑">✏️</button>' +
         '<button class="row-btn del" data-del="' + r.id + '" title="删除">🗑</button>' +
         '</td></tr>';
@@ -318,14 +344,7 @@
     LH.byId('retInfo').textContent = '共 ' + pg.total + ' 笔，第 ' + pg.page + '/' + pg.pages + ' 页';
   }
   function bindRowButtons(tbody) {
-    // 行点击直接进入编辑（电脑/手机点行更便捷）
-    tbody.querySelectorAll('tr[data-row]').forEach(function (tr) {
-      tr.addEventListener('click', function (e) {
-        // 忽略行内按钮自身的 click（按钮自带 handler，避免重复触发）
-        if (e.target.closest('.row-btn')) return;
-        editRecord(tr.getAttribute('data-row'));
-      });
-    });
+    // 点击行不再直接编辑，需点 ✏️ 按钮弹出编辑弹窗（更明确的交互）
     tbody.querySelectorAll('[data-edit]').forEach(function (b) {
       b.addEventListener('click', function (e) { e.stopPropagation(); editRecord(b.getAttribute('data-edit')); });
     });
@@ -636,6 +655,120 @@
     }
     LH.openModal('scanMask');
   }
+
+  /** 扫码：目标快递单号输入框 id 可变（编辑弹窗） */
+  function openScan_e(targetId) {
+    if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
+      var ss = document.createElement('script');
+      ss.src = '_shared/js/zxing.min.js';
+      ss.onload = function () { startScan_e(targetId); };
+      ss.onerror = function () { LH.toast('扫码组件加载失败，请手动输入'); LH.byId(targetId).focus(); };
+      document.head.appendChild(ss);
+    } else {
+      startScan_e(targetId);
+    }
+    LH.openModal('scanMask');
+  }
+  function startScan_e(targetId) {
+    var tip = LH.byId('scanTip');
+    tip.textContent = '正在打开摄像头……请将面单条形码对准取景框';
+    tip.style.color = '';
+    try {
+      scanReader = new ZXing.BrowserMultiFormatReader();
+      var hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX
+      ]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      scanReader.hints = hints;
+      scanReader.timeBetweenDecodingAttempts = 150;
+      scanReader.decodeFromConstraints({
+        audio: false,
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+      }, 'scanVideo', function (result) {
+        if (!result) return;
+        var txt = (result.getText() || '').trim();
+        if (!txt) return;
+        LH.byId(targetId).value = txt;
+        stopScan();
+        LH.toast('已识别单号：' + txt);
+        setTimeout(function () { LH.closeModal('scanMask'); }, 280);
+      }).then(function (c) { scanControls = c; })
+        .catch(function () {
+          tip.textContent = '无法访问摄像头（可点「手动输入」）';
+          tip.style.color = 'var(--red)';
+        });
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(function () {
+        if (LH.byId('scanMask').classList.contains('open')) {
+          LH.toast('长时间未识别，已自动关闭摄像头');
+          LH.closeModal('scanMask');
+        }
+      }, 90000);
+    } catch (e) {
+      tip.textContent = '当前环境不支持扫码，请手动输入';
+      tip.style.color = 'var(--red)';
+    }
+  }
+
+  /** 扫码：目标快递单号输入框 id 可变（编辑弹窗） */
+  function openScan_e(targetId) {
+    if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
+      var ss = document.createElement('script');
+      ss.src = '_shared/js/zxing.min.js';
+      ss.onload = function () { startScan_e(targetId); };
+      ss.onerror = function () { LH.toast('扫码组件加载失败，请手动输入'); LH.byId(targetId).focus(); };
+      document.head.appendChild(ss);
+    } else {
+      startScan_e(targetId);
+    }
+    LH.openModal('scanMask');
+  }
+  function startScan_e(targetId) {
+    var tip = LH.byId('scanTip');
+    tip.textContent = '正在打开摄像头……请将面单条形码对准取景框';
+    tip.style.color = '';
+    try {
+      scanReader = new ZXing.BrowserMultiFormatReader();
+      var hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX
+      ]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      scanReader.hints = hints;
+      scanReader.timeBetweenDecodingAttempts = 150;
+      scanReader.decodeFromConstraints({
+        audio: false,
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+      }, 'scanVideo', function (result) {
+        if (!result) return;
+        var txt = (result.getText() || '').trim();
+        if (!txt) return;
+        LH.byId(targetId).value = txt;
+        stopScan();
+        LH.toast('已识别单号：' + txt);
+        setTimeout(function () { LH.closeModal('scanMask'); }, 280);
+      }).then(function (c) { scanControls = c; })
+        .catch(function (e) {
+          tip.textContent = '无法访问摄像头（可点「手动输入」）';
+          tip.style.color = 'var(--red)';
+        });
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(function () {
+        if (LH.byId('scanMask').classList.contains('open')) {
+          LH.toast('长时间未识别，已自动关闭摄像头');
+          LH.closeModal('scanMask');
+        }
+      }, 90000);
+    } catch (e) {
+      tip.textContent = '当前环境不支持扫码，请手动输入';
+      tip.style.color = 'var(--red)';
+    }
+  }
   function startScan() {
     var tip = LH.byId('scanTip');
     tip.textContent = '正在打开摄像头……请将面单条形码对准取景框';
@@ -843,7 +976,57 @@
     // 导出 / 示例
     LH.byId('btnExport').addEventListener('click', exportCSV);
     LH.byId('btnExportSta').addEventListener('click', exportStaCSV);
-    LH.byId('btnBackup').addEventListener('click', backup);
+    LH.byId('btnExportStaReg').addEventListener('click', exportStaCSV);
+    LH.byId('btnWipeIron').addEventListener('click', function () {
+      LH.confirm('将清空本机的熨斗退货与补发记录（不可恢复）。建议先导出 CSV 或备份 JSON，确定继续？', '确定清空')
+        .then(function (ok) {
+          if (!ok) return;
+          LH.store.set(LH.KEYS.iron.returns, []);
+          LH.store.set(LH.KEYS.iron.reps, []);
+          LH.toast('已清空熨斗台账');
+          renderAll();
+        });
+    });
+
+    // 编辑弹窗绑定（在弹窗内修改记录）
+    LH.byId('e_btnScan').addEventListener('click', function () { openScan_e('e_express'); });
+    LH.byId('e_btnEditReason').addEventListener('click', openReason);
+    bindSegPick('e_insp', function (v) {
+      var show = (v === '不合格');
+      LH.byId('e_issueWrap').style.display = show ? '' : 'none';
+      if (show && !reasonSel.length) openReason();
+      if (v === '合格') {
+        var noteEl = LH.byId('e_note');
+        if (noteEl && !noteEl.value.trim()) noteEl.value = '无理由';
+      }
+    });
+    bindSegPick('e_volt');
+    var em = LH.byId('e_model');
+    if (em) em.addEventListener('change', function () { fillColors('e_'); });
+    LH.byId('editSave').addEventListener('click', saveEdit);
+    LH.byId('editCancel').addEventListener('click', closeEdit);
+    LH.byId('editClose').addEventListener('click', closeEdit);
+    LH.bindMaskClose('editMask');
+
+    // 编辑弹窗绑定（在弹窗内修改记录）
+    LH.byId('e_btnScan').addEventListener('click', function () { openScan_e('e_express'); });
+    LH.byId('e_btnEditReason').addEventListener('click', openReason);
+    bindSegPick('e_insp', function (v) {
+      var show = (v === '不合格');
+      LH.byId('e_issueWrap').style.display = show ? '' : 'none';
+      if (show && !reasonSel.length) openReason();
+      if (v === '合格') {
+        var noteEl = LH.byId('e_note');
+        if (noteEl && !noteEl.value.trim()) noteEl.value = '无理由';
+      }
+    });
+    bindSegPick('e_volt');
+    var em = LH.byId('e_model');
+    if (em) em.addEventListener('change', function () { fillColors('e_'); });
+    LH.byId('editSave').addEventListener('click', saveEdit);
+    LH.byId('editCancel').addEventListener('click', closeEdit);
+    LH.byId('editClose').addEventListener('click', closeEdit);
+    LH.bindMaskClose('editMask');
     LH.byId('btnSeed').addEventListener('click', seed);
     LH.bindMaskClose('confirmMask');
 
