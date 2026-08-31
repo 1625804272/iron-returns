@@ -113,9 +113,21 @@
     msg('正在验证 Token 并同步……');
     state('连接中');
     LH.cloud.verify(f.token).then(function (v) {
-      if (!v.ok) { msg('Token 验证失败：' + v.error, true); state('验证失败'); return; }
-      doPull().then(function () { doPush().then(function () { msg('已连接 ✅ 账号 ' + v.login); state('已同步'); LH.toast('云端同步已开启'); }); });
+      if (!v.ok) {
+        // 验证接口网络不通（非 401/403 鉴权错误）→ 仍尝试同步（走 CDN 通道）
+        if (v.offline || (v.error && v.error.indexOf('网络') >= 0)) {
+          msg('Token 验证接口网络不通，仍尝试同步（走 CDN 通道）……');
+          doPull().then(function () { doPush().then(function () { afterConnect(); }); });
+          return;
+        }
+        msg('Token 验证失败：' + v.error, true); state('验证失败'); return;
+      }
+      doPull().then(function () { doPush().then(function () { afterConnect(); }); });
     });
+  }
+  function afterConnect() {
+    msg('已连接 ✅ 云端数据已同步（拉取走 CDN 兜底，推送联网后自动完成）');
+    state('已同步'); LH.toast('云端同步已开启');
   }
 
   /* ---------- 立即同步 ---------- */
@@ -129,6 +141,7 @@
     doPull().then(function () {
       doPush().then(function (r) {
         if (r && r.ok) { msg('同步完成 ✅ 本地 ↔ 云端一致'); state('已同步'); LH.toast('同步完成'); }
+        else if (r && r.offline) { msg('已拉取云端数据，但推送需联网 GitHub API，当前网络不可达（数据已本地保存，联网后自动重试）', true); state('待推送'); }
         else { msg('推送失败：' + (r && r.error), true); state('同步失败'); }
       });
     });
@@ -151,8 +164,8 @@
       if (res.exists && res.data) {
         var info = opts.applyData(res.data) || '';
         if (typeof opts.onChanged === 'function') opts.onChanged();
-        msg('已合并云端数据' + (info ? '：' + info : ''));
-        LH.toast('已同步云端数据');
+        msg('已合并云端数据' + (res.viaCdn ? '（via CDN）' : '') + (info ? '：' + info : ''));
+        LH.toast('已同步云端数据' + (res.viaCdn ? '（CDN）' : ''));
       }
       state('已同步');
       return res;
@@ -164,6 +177,12 @@
     var payload = opts.getPayload();
     return LH.cloud.pull(opts.path).then(function (p) {
       return LH.cloud.push(opts.path, payload, p && p.sha ? p.sha : null);
+    }).then(function (r) {
+      if (!r.ok && r.offline) {
+        msg('推送失败：当前网络无法连接 GitHub API（数据已在本地保存，联网后自动重试）', true);
+        state('待推送');
+      }
+      return r;
     });
   }
 
