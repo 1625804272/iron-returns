@@ -57,13 +57,18 @@
       '  </div>' +
       '</div>';
     document.body.appendChild(div);
-
-    document.getElementById('cldClose').addEventListener('click', close);
-    document.getElementById('cldCancel').addEventListener('click', close);
-    document.getElementById('cldSave').addEventListener('click', saveAndConnect);
-    document.getElementById('cldNow').addEventListener('click', syncNow);
-    document.getElementById('cldClear').addEventListener('click', clearCfg);
-    div.addEventListener('mousedown', function (e) { if (e.target === div) close(); });
+    var cldClose = document.getElementById('cldClose');
+    if (!cldClose) { if (window.console) console.warn('cloud-ui: cldClose 缺失'); return; }
+    try {
+      cldClose.addEventListener('click', close);
+      document.getElementById('cldCancel').addEventListener('click', close);
+      document.getElementById('cldSave').addEventListener('click', saveAndConnect);
+      document.getElementById('cldNow').addEventListener('click', syncNow);
+      document.getElementById('cldClear').addEventListener('click', clearCfg);
+      div.addEventListener('mousedown', function (e) { if (e.target === div) close(); });
+    } catch (e) {
+      if (window.console) console.warn('cloud-ui bind err:', e.message);
+    }
   }
   function open() {
     ensureModal();
