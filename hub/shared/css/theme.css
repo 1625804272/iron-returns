@@ -240,6 +240,20 @@ body.no-side .content{max-width:1280px;padding-left:28px;padding-right:28px}
 .pill.st-neutral{color:var(--muted);background:var(--surface-2)}
 .pill.st-teal{color:var(--teal);background:var(--teal-soft)}
 .pill.st-violet{color:var(--violet);background:var(--violet-soft)}
+
+/* ============ 编辑弹窗：与旧版系统编辑表单一致的网格布局 ============ */
+#editForm{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:15px}
+#editForm .f-field{display:flex;flex-direction:column;gap:6px;min-width:138px;margin-bottom:0}
+#editForm .f-field.full{grid-column:1/-1}
+#editForm .seg-pick{display:flex;gap:6px;flex-wrap:nowrap}
+#editForm .seg-pick button{flex:1;height:auto;min-height:38px;padding:9px 6px;border:1px solid var(--border-strong);background:var(--surface);border-radius:10px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all var(--t-fast)}
+#editForm .seg-pick button:hover{border-color:var(--primary);color:var(--primary)}
+#editForm .seg-pick button.on{background:var(--primary-soft);border-color:var(--primary);color:var(--primary);font-weight:600}
+#editForm .f-field .f-input{height:40px}
+@media (max-width:767px){
+  #editForm{grid-template-columns:1fr;gap:12px}
+  #editForm .seg-pick button{min-height:42px;font-size:14px;padding:11px 6px}
+}
 .chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:7px;background:var(--primary-soft);color:var(--primary-strong);font-size:11.5px;font-weight:600;margin:2px 4px 2px 0}
 .chip.gray{background:var(--surface-2);color:var(--muted)}
 
