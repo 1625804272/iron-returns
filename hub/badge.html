@@ -61,7 +61,12 @@
               <div class="f-row">
                 <div class="f-field"><label>退货日期 <span class="req">*</span></label><input class="f-input" type="date" id="f_date"></div>
                 <div class="f-field"><label>订单号 <span class="req">*</span></label><input class="f-input" type="text" id="f_order" placeholder="如 XA20260826001"></div>
-                <div class="f-field"><label>快递单号</label><input class="f-input" type="text" id="f_express" placeholder="选填"></div>
+                <div class="f-field"><label>快递单号 <span class="opt">（可扫码）</span></label>
+                  <div style="display:flex;gap:8px">
+                    <input class="f-input" type="text" id="f_express" placeholder="选填">
+                    <button class="btn ghost sm" type="button" id="btnScan" style="height:40px">📷 扫码</button>
+                  </div>
+                </div>
                 <div class="f-field"><label>客户 / 来源 <span class="req">*</span></label>
                   <input class="f-input" type="text" id="f_customer" list="custList" placeholder="如 广州印花纺织科技">
                   <datalist id="custList"></datalist>
@@ -306,6 +311,27 @@
     </div>
   </div>
 </div>
+
+<!-- 扫码弹窗（摄像头识别快递单号） -->
+<div class="modal-mask" id="scanMask">
+  <div class="modal" style="width:480px">
+    <div class="m-head"><h3>扫码识别快递单号</h3><button class="m-close" id="scanClose">✕</button></div>
+    <div class="m-body">
+      <div id="scanView" style="position:relative;border-radius:12px;overflow:hidden;background:#111;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center">
+        <video id="scanVideo" playsinline style="width:100%;height:100%;object-fit:cover"></video>
+      </div>
+      <p class="f-hint" id="scanTip" style="text-align:center;margin-top:12px">正在打开摄像头……请将面单条形码对准取景框</p>
+      <div class="f-hint" style="text-align:center">💡 识别成功或切后台会自动关闭摄像头；90 秒未识别也会自动关闭，避免手机发热</div>
+    </div>
+    <div class="m-foot">
+      <button class="btn ghost" id="scanCancel">取消</button>
+      <button class="btn green" id="scanShot">📸 拍照识别</button>
+      <button class="btn primary" id="scanManual">手动输入</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="scanCanvas" style="display:none"></canvas>
 
 <div class="toast" id="toast"></div>
 
