@@ -159,23 +159,10 @@
     }).join('');
   }
 
-  /* ================= 仪表盘：快捷操作（配置驱动） ================= */
-  function renderQuick() {
-    var wrap = LH.byId('dashQuick');
-    if (!wrap) return;
-    var quicks = LH.MODULES.filter(function (m) { return m.quick; });
-    if (!quicks.length) return;
-    wrap.innerHTML = quicks.map(function (m, i) {
-      return '<a class="btn ' + (i === 0 ? 'primary' : 'ghost') + '" href="' + LH.esc(m.quick.href) + '">' +
-        LH.esc(m.quick.label) + '</a>';
-    }).join('');
-  }
-
   /* ================= 刷新 ================= */
   function refresh() {
     renderGreet();
     renderDashStats();
-    renderQuick();
     renderEntries();
     var d = loadAll();
     renderTrend(d);
