@@ -203,7 +203,7 @@
     renderReasonSum();
   }
   function editRecord(id) {
-    var r = returns[idxOf(returns, id)];
+    var r = returns[indexOf(returns, id)];
     if (!r) return;
     editId = id;
     // 打开独立编辑弹窗（不再在登记表内联编辑）
@@ -212,8 +212,9 @@
     LH.byId('e_order').value = r.orderNo || '';
     LH.byId('e_express').value = r.express || '';
     LH.byId('e_model').innerHTML = Object.keys(MODEL_COLORS).map(function (m) { return '<option>' + m + '</option>'; }).join('');
-    fillColors('e_', r.color);
+    // 先设型号再填颜色（否则颜色按第一个型号取，回填错误）
     LH.byId('e_model').value = r.model;
+    fillColors('e_', r.color);
     setSeg('e_volt', r.volt || '220V');
     LH.byId('e_plug').value = r.plug || '国标';
     LH.byId('e_qty').value = r.qty;
