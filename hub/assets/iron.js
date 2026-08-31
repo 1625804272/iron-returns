@@ -540,16 +540,22 @@
     var pg = LH.paginate(list, page.sta, PER);
     LH.byId('staBody').innerHTML = pg.rows.map(function (r) {
       var st = status(r);
-      return '<tr><td class="mono">' + LH.esc(r.date) + '</td>' +
-        '<td class="td-no">' + LH.esc(r.orderNo || '—') + '</td>' +
-        '<td class="td-strong">' + LH.esc(r.model) + '</td><td>' + LH.esc(r.color) + '</td>' +
-        '<td class="td-muted">' + LH.esc(r.volt) + '</td><td class="td-num">' + r.qty + '</td>' +
-        '<td class="td-muted">' + LH.esc(r.supplier) + '</td><td>' + inspPill(r.insp) + '</td>' +
-        '<td class="td-muted td-ellipsis" title="' + LH.esc(reasonText(r)) + '">' + LH.esc(reasonText(r)) + '</td>' +
-        '<td><span class="pill ' + st.cls + '">' + st.name + '</span></td></tr>';
+      var modelTxt = LH.esc(r.model) + ' ' + LH.esc(r.color) + ' ' + LH.esc(r.volt) + ' ' + LH.esc(r.plug);
+      return '<tr>' +
+        '<td data-label="退货日期" class="mono">' + LH.esc(r.date) + '</td>' +
+        '<td data-label="订单号" class="td-no">' + LH.esc(r.orderNo || '—') + '</td>' +
+        '<td data-label="型号" class="td-strong td-ellipsis">' + modelTxt + '</td>' +
+        '<td data-label="数量" class="td-num">' + r.qty + '</td>' +
+        '<td data-label="供应商" class="td-muted td-ellipsis">' + LH.esc(r.supplier) + '</td>' +
+        '<td data-label="检验">' + inspPill(r.insp) + '</td>' +
+        '<td data-label="不合格原因" class="td-muted td-ellipsis" title="' + LH.esc(reasonText(r)) + '">' + LH.esc(reasonText(r)) + '</td>' +
+        '<td data-label="补发状态"><span class="pill ' + st.cls + '">' + st.name + '</span></td>' +
+        '</tr>';
     }).join('');
     LH.showEmpty('staEmpty', null, pg.rows, { icon: '🔍', title: '无符合条件的记录', sub: '调整上方筛选条件试试' });
-    renderPager('staPager', pg, function (p) { page.sta = p; renderSta(); });
+    renderPager('staPager', pg, function (p) { page.sta = p; renderSta();
+    // 视图切换后 echarts 重计算尺寸（避免初次渲染时容器为 0 宽）
+    if (typeof resizeStaCharts === 'function') setTimeout(resizeStaCharts, 80); });
     LH.byId('staCount').textContent = '共 ' + list.length + ' 笔';
     LH.byId('staInfo').textContent = '共 ' + pg.total + ' 笔，第 ' + pg.page + '/' + pg.pages + ' 页';
 
@@ -569,9 +575,9 @@
     var mKeys = Object.keys(byModel);
     var c1 = echarts.init(LH.byId('chartModel'));
     c1.setOption({
-      grid: { left: 44, right: 16, top: 34, bottom: 26 },
+      grid: { left: 60, right: 16, top: 38, bottom: 38 },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      legend: { data: ['退货数量', '已补发', '未结清'], right: 0, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#67718A' } },
+      legend: { data: ['退货数量', '已补发', '未结清'], bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#67718A' } },
       xAxis: { type: 'category', data: mKeys, axisLine: { lineStyle: { color: '#E7EAF1' } }, axisLabel: { color: '#98A1B6', fontSize: 11 }, axisTick: { show: false } },
       yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F1F3F8' } }, axisLabel: { color: '#98A1B6', fontSize: 11 } },
       series: [
@@ -601,6 +607,11 @@
       }]
     });
     window.addEventListener('resize', function () { c1.resize(); c2.resize(); });
+    LH._staCharts = [c1, c2];
+    setTimeout(function () { c1.resize(); c2.resize(); }, 60);
+  }
+  function resizeStaCharts() {
+    (LH._staCharts || []).forEach(function (c) { try { c.resize(); } catch (e) {} });
   }
 
   /* ================= 导入 / 导出 ================= */
