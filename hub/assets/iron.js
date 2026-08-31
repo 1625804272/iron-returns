@@ -321,7 +321,8 @@
     LH.byId('retBody').innerHTML = pg.rows.map(function (r) {
       var st = status(r);
       var pct = Math.min(100, Math.round(st.done / (Number(r.qty) || 1) * 100));
-      return '<tr>' +
+      // data-row + row-clickable 用于整行点击编辑
+      return '<tr data-row="' + r.id + '" class="row-clickable">' +
         '<td data-label="退货日期" class="mono">' + LH.esc(r.date) + '</td>' +
         '<td data-label="订单号" class="td-no">' + LH.esc(r.orderNo || '—') + '</td>' +
         '<td data-label="快递单号" class="td-muted">' + LH.esc(r.express || '—') + '</td>' +
@@ -344,7 +345,15 @@
     LH.byId('retInfo').textContent = '共 ' + pg.total + ' 笔，第 ' + pg.page + '/' + pg.pages + ' 页';
   }
   function bindRowButtons(tbody) {
-    // 点击行不再直接编辑，需点 ✏️ 按钮弹出编辑弹窗（更明确的交互）
+    // 整行点击 = 进入编辑（更顺手的交互，✏️ 按钮仅作视觉提示）
+    tbody.querySelectorAll('tr[data-row]').forEach(function (tr) {
+      tr.addEventListener('click', function (e) {
+        // 忽略行内按钮自身的 click（按钮自带 handler，避免重复触发）
+        if (e.target.closest('.row-btn')) return;
+        editRecord(tr.getAttribute('data-row'));
+      });
+      tr.style.cursor = 'pointer';
+    });
     tbody.querySelectorAll('[data-edit]').forEach(function (b) {
       b.addEventListener('click', function (e) { e.stopPropagation(); editRecord(b.getAttribute('data-edit')); });
     });
