@@ -94,6 +94,11 @@
       var show = (v === '不合格');
       LH.byId('issueWrap').style.display = show ? '' : 'none';
       if (show && !reasonSel.length) openReason();   // 选不合格 → 自动弹原因面板
+      // 选「合格」且备注为空时，自动填默认备注「无理由」（用户已填过则保留）
+      if (v === '合格') {
+        var noteEl = LH.byId('f_note');
+        if (noteEl && !noteEl.value.trim()) noteEl.value = '无理由';
+      }
     });
 
     LH.byId('retForm').addEventListener('submit', function (e) {
@@ -188,6 +193,8 @@
     reasonSel = [];
     LH.byId('formTitle').textContent = '新增退货登记';
     LH.byId('btnSave').textContent = '保存登记';
+    var br = LH.byId('btnReset');
+    if (br) { br.textContent = '清空'; br.classList.remove('danger-soft'); }
     LH.byId('retForm').reset();
     LH.byId('f_date').value = LH.today();
     LH.byId('f_qty').value = 1;
@@ -203,8 +210,10 @@
     var r = returns[indexOf(returns, id)];
     if (!r) return;
     editId = id;
-    LH.byId('formTitle').textContent = '编辑退货记录';
+    LH.byId('formTitle').textContent = '编辑退货记录（' + (r.orderNo || id.slice(0, 6)) + '）';
     LH.byId('btnSave').textContent = '保存修改';
+    var br = LH.byId('btnReset');
+    if (br) { br.textContent = '取消编辑'; br.classList.add('danger-soft'); }
     LH.byId('f_date').value = r.date || '';
     LH.byId('f_order').value = r.orderNo || '';
     LH.byId('f_express').value = r.express || '';
@@ -284,7 +293,7 @@
     LH.byId('retBody').innerHTML = pg.rows.map(function (r) {
       var st = status(r);
       var pct = Math.min(100, Math.round(st.done / (Number(r.qty) || 1) * 100));
-      return '<tr>' +
+      return '<tr data-row="' + r.id + '">' +
         '<td class="mono">' + LH.esc(r.date) + '</td>' +
         '<td class="td-no">' + LH.esc(r.orderNo || '—') + '</td>' +
         '<td class="td-muted">' + LH.esc(r.express || '—') + '</td>' +
@@ -309,11 +318,19 @@
     LH.byId('retInfo').textContent = '共 ' + pg.total + ' 笔，第 ' + pg.page + '/' + pg.pages + ' 页';
   }
   function bindRowButtons(tbody) {
+    // 行点击直接进入编辑（电脑/手机点行更便捷）
+    tbody.querySelectorAll('tr[data-row]').forEach(function (tr) {
+      tr.addEventListener('click', function (e) {
+        // 忽略行内按钮自身的 click（按钮自带 handler，避免重复触发）
+        if (e.target.closest('.row-btn')) return;
+        editRecord(tr.getAttribute('data-row'));
+      });
+    });
     tbody.querySelectorAll('[data-edit]').forEach(function (b) {
-      b.addEventListener('click', function () { editRecord(b.getAttribute('data-edit')); });
+      b.addEventListener('click', function (e) { e.stopPropagation(); editRecord(b.getAttribute('data-edit')); });
     });
     tbody.querySelectorAll('[data-del]').forEach(function (b) {
-      b.addEventListener('click', function () { delRecord(b.getAttribute('data-del')); });
+      b.addEventListener('click', function (e) { e.stopPropagation(); delRecord(b.getAttribute('data-del')); });
     });
   }
   /** 通用分页器渲染 */
