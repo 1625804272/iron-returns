@@ -459,11 +459,10 @@ select.f-input{appearance:none;background:var(--surface) url("data:image/svg+xml
   .tb-actions .btn{height:32px;padding:0 10px;font-size:12px;white-space:nowrap}
   .tb-actions .brand-mark{width:30px;height:30px;font-size:15px}
   .page-head .ph-main h2{font-size:19px}
-  /* 页面操作区整行换行，按钮均分 */
-  .page-head .ph-act{width:100%;gap:8px}
-  .page-head .ph-act .btn{flex:1;justify-content:center;padding:0 8px}
-  /* 表格强制横向滚动，列不挤压 */
-  .rt{min-width:860px}
+  /* 页面操作区整行换行，按钮 2 列网格 + 不换行，避免文字错位 */
+  .page-head .ph-act{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+  .page-head .ph-act .btn{width:100%;justify-content:center;padding:0 10px;white-space:nowrap}
+  /* 表格强制横向滚动（兜底，实际在手机走卡片模式） */
   /* 行内操作按钮加大，便于触控 */
   .row-btn{width:34px;height:34px;border-radius:9px;font-size:15px}
   /* 筛选控件最小宽度 */
@@ -473,6 +472,9 @@ select.f-input{appearance:none;background:var(--surface) url("data:image/svg+xml
   /* 移动端：退货/出入库表格转卡片（按截图布局） */
   .rt thead{display:none}
   .rt{min-width:0}
+  /* 关键修复：桌面端 .rt.iron-tbl{min-width:760px}(0,2,0) 特异性高于 .rt{min-width:0}(0,1,0)，
+     会盖掉移动端归零 → 表格在手机上仍是 760px 宽、需横向滚动、卡片超出屏幕。这里用同特异性单独归零。 */
+  .rt.iron-tbl{min-width:0}
   .rt tbody tr{display:block;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:12px;padding:14px;box-shadow:var(--shadow-sm);position:relative}
   .rt tbody tr:hover{background:var(--surface)}
   .rt td{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border:none;white-space:normal;font-size:13px;gap:10px}
@@ -510,7 +512,7 @@ select.f-input{appearance:none;background:var(--surface) url("data:image/svg+xml
   .card-body{padding:13px 15px 15px}
   .records-tools{padding:12px 14px;gap:10px}
   .tools-right{margin-left:0;width:100%}
-  .searchbox{width:100%;flex:1}
+  .searchbox{width:100%;flex:1 1 100%;max-width:none!important}
   .select{flex:1;min-width:0}
   .table-wrap{max-height:none}
   .reason-grid{grid-template-columns:1fr}
