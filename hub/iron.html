@@ -50,9 +50,10 @@
         <div class="page-head">
           <div class="ph-main"><h2>退货登记</h2><p>型号与颜色联动，选「不合格」需勾选具体原因</p></div>
           <div class="ph-act">
+            <button class="btn ghost sm" id="btnExport">⬇️ 导出退货 CSV</button>
+            <button class="btn ghost sm" id="btnExportStaReg">📤 导出补发 CSV</button>
             <button class="btn ghost sm" id="btnSeed">载入示例</button>
-            <button class="btn ghost sm" id="btnBackup">备份 JSON</button>
-            <button class="btn ghost sm" id="btnExport">导出 CSV</button>
+            <button class="btn danger-soft sm" id="btnWipeIron">清空全部</button>
           </div>
         </div>
 
@@ -119,6 +120,7 @@
                   <label>不合格原因 <span class="req">*</span> <span class="opt">（已选，可点击修改）</span></label>
                   <div id="reasonSum" style="display:flex;flex-wrap:wrap;margin-bottom:8px;min-height:26px"></div>
                   <button class="btn ghost sm" type="button" id="btnEditReason">✏️ 选择不合格原因</button>
+                  <textarea class="f-input" id="f_reason_extra" placeholder="补充说明（选填）" style="margin-top:8px"></textarea>
                 </div>
                 <div class="f-field full">
                   <label>备注 <span class="opt">（选填）</span></label>
@@ -342,6 +344,62 @@
 <div class="toast" id="toast"></div>
 <canvas id="scanCanvas" style="display:none"></canvas>
 <input type="file" id="importFile" accept=".json" style="display:none">
+
+<!-- 编辑退货弹窗（在弹窗内修改记录，字段与登记表一致） -->
+<div class="modal-mask" id="editMask">
+  <div class="modal" style="width:640px">
+    <div class="m-head"><h3 id="editFormTitle">编辑退货记录</h3><span class="m-tag" id="editFormTag">修改</span>
+      <button class="m-close" id="editClose">✕</button></div>
+    <div class="m-body">
+      <form id="editForm" autocomplete="off">
+        <div class="f-row">
+          <div class="f-field"><label>退货日期 <span class="req">*</span></label><input class="f-input" type="date" id="e_date"></div>
+          <div class="f-field"><label>订单号 <span class="req">*</span></label><input class="f-input" type="text" id="e_order" placeholder="如 DD202608001"></div>
+          <div class="f-field"><label>快递单号 <span class="opt">（可扫码）</span></label>
+            <div style="display:flex;gap:8px">
+              <input class="f-input" type="text" id="e_express" placeholder="面单条形码单号">
+              <button class="btn ghost sm" type="button" id="e_btnScan" style="height:40px">📷 扫码</button>
+            </div>
+          </div>
+          <div class="f-field"><label>型号 <span class="req">*</span></label><select class="f-input" id="e_model"></select></div>
+          <div class="f-field"><label>颜色 <span class="req">*</span></label><select class="f-input" id="e_color"></select></div>
+          <div class="f-field"><label>电压 <span class="req">*</span></label>
+            <div class="seg-pick" id="e_volt"><button type="button" data-v="220V">220V</button><button type="button" data-v="110V">110V</button></div>
+          </div>
+          <div class="f-field"><label>插头规格 <span class="req">*</span></label>
+            <select class="f-input" id="e_plug">
+              <option>国标</option><option>美规</option><option>欧规</option><option>英规</option><option>澳规</option><option>其他</option>
+            </select>
+          </div>
+          <div class="f-field"><label>退货数量 <span class="req">*</span></label><input class="f-input" type="number" id="e_qty" min="1" step="1" value="1"></div>
+          <div class="f-field"><label>所属供应商 <span class="req">*</span></label>
+            <input class="f-input" type="text" id="e_supplier" list="supList" value="东莞">
+          </div>
+          <div class="f-field full"><label>检验情况 <span class="req">*</span></label>
+            <div class="seg-pick" id="e_insp">
+              <button type="button" data-v="缺料">缺料</button>
+              <button type="button" data-v="合格">合格</button>
+              <button type="button" data-v="不合格">不合格</button>
+            </div>
+          </div>
+          <div class="f-field full" id="e_issueWrap" style="display:none">
+            <label>不合格原因 <span class="req">*</span></label>
+            <div id="e_reasonSum" style="display:flex;flex-wrap:wrap;margin-bottom:8px;min-height:26px"></div>
+            <button class="btn ghost sm" type="button" id="e_btnEditReason">✏️ 选择不合格原因</button>
+            <textarea class="f-input" id="e_reason_extra" placeholder="补充说明（选填）" style="margin-top:8px"></textarea>
+          </div>
+          <div class="f-field full"><label>备注 <span class="opt">（选填）</span></label>
+            <textarea class="f-input" id="e_note" placeholder="如：物流单号 / 客户要求 / 处理说明……"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="m-foot">
+      <button class="btn ghost" id="editCancel">取消</button>
+      <button class="btn primary" id="editSave">保存修改</button>
+    </div>
+  </div>
+</div>
 
 <script src="shared/js/core.js"></script>
 <script src="shared/js/app-shell.js"></script>
