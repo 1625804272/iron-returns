@@ -160,11 +160,101 @@
     if (el) { el.classList.add('invalid'); setTimeout(function () { el.classList.remove('invalid'); }, 600); el.focus(); }
     LH.toast(msg);
   }
+
+  /* ================= 扫码（识别快递单号） ================= */
+  var scanReader = null, scanControls = null, scanTimer = null;
+  function openScan() {
+    if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
+      var s = document.createElement('script');
+      s.src = 'shared/js/zxing.min.js';
+      s.onload = function () { startScan(); };
+      s.onerror = function () { LH.toast('扫码组件加载失败，请手动输入'); LH.byId('f_express').focus(); };
+      document.head.appendChild(s);
+    } else {
+      startScan();
+    }
+    LH.openModal('scanMask');
+  }
+  function startScan() {
+    var tip = LH.byId('scanTip');
+    tip.textContent = '正在打开摄像头……请将面单条形码对准取景框';
+    tip.style.color = '';
+    if (location.protocol === 'file:') {
+      tip.textContent = '提示：以 file:// 打开时部分浏览器会禁用摄像头，可手动输入或改用本地服务打开';
+      tip.style.color = 'var(--amber)';
+    }
+    try {
+      scanReader = new ZXing.BrowserMultiFormatReader();
+      var hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX
+      ]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      scanReader.hints = hints;
+      scanReader.timeBetweenDecodingAttempts = 150;
+      scanReader.decodeFromConstraints({
+        audio: false,
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+      }, 'scanVideo', function (result) {
+        if (!result) return;
+        var txt = (result.getText() || '').trim();
+        if (!txt) return;
+        LH.byId('f_express').value = txt;
+        stopScan();
+        LH.toast('已识别单号：' + txt);
+        setTimeout(function () { LH.closeModal('scanMask'); }, 280);
+      }).then(function (c) { scanControls = c; })
+        .catch(function (e) {
+          tip.textContent = '无法访问摄像头：' + (e && e.message ? e.message : e) + '（可点「手动输入」）';
+          tip.style.color = 'var(--red)';
+        });
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(function () {
+        if (LH.byId('scanMask').classList.contains('open')) {
+          LH.toast('长时间未识别，已自动关闭摄像头');
+          LH.closeModal('scanMask');
+        }
+      }, 90000);
+    } catch (e) {
+      tip.textContent = '当前环境不支持扫码，请手动输入';
+      tip.style.color = 'var(--red)';
+    }
+  }
+  function stopScan() {
+    try { if (scanControls) scanControls.stop(); } catch (e) { }
+    try {
+      var v = LH.byId('scanVideo');
+      if (v && v.srcObject) { v.srcObject.getTracks().forEach(function (t) { t.stop(); }); v.srcObject = null; }
+    } catch (e) { }
+    scanControls = null;
+    clearTimeout(scanTimer);
+  }
+  function scanShot() {
+    var v = LH.byId('scanVideo');
+    if (!scanReader || !v.videoWidth) return LH.toast('摄像头还未就绪');
+    var c = LH.byId('scanCanvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    scanReader.decodeFromImage(c).then(function (res) {
+      var txt = (res.getText() || '').trim();
+      if (txt) {
+        LH.byId('f_express').value = txt;
+        stopScan();
+        LH.toast('已识别单号：' + txt);
+        setTimeout(function () { LH.closeModal('scanMask'); }, 280);
+      } else { LH.toast('未识别，请调整角度或光线后重试'); }
+    }).catch(function () { LH.toast('未识别，请调整角度或光线后重试'); });
+  }
+
   function resetForm() {
     editId = null;
     reasonSel = [];
     LH.byId('formTitle').textContent = '新增退货登记';
     LH.byId('btnSave').textContent = '保存登记';
+    var br = LH.byId('btnReset');
+    if (br) { br.textContent = '清空'; br.classList.remove('danger-soft'); }
     LH.byId('retForm').reset();
     LH.byId('f_date').value = LH.today();
     LH.byId('f_qty').value = 1;
@@ -209,8 +299,10 @@
     var r = returns[idxOf(returns, id)];
     if (!r) return;
     editId = id;
-    LH.byId('formTitle').textContent = '编辑退货记录';
+    LH.byId('formTitle').textContent = '编辑退货记录（' + (r.orderNo || id.slice(0, 6)) + '）';
     LH.byId('btnSave').textContent = '保存修改';
+    var br = LH.byId('btnReset');
+    if (br) { br.textContent = '取消编辑'; br.classList.add('danger-soft'); }
     LH.byId('f_date').value = r.date || '';
     LH.byId('f_order').value = r.orderNo || '';
     LH.byId('f_express').value = r.express || '';
@@ -287,7 +379,7 @@
     var list = filteredReg();
     var pg = LH.paginate(list, page.reg, PER);
     LH.byId('retBody').innerHTML = pg.rows.map(function (r) {
-      return '<tr><td class="mono">' + LH.esc(r.date) + '</td>' +
+      return '<tr data-row="' + r.id + '"><td class="mono">' + LH.esc(r.date) + '</td>' +
         '<td class="td-no">' + LH.esc(r.orderNo || '—') + '</td>' +
         '<td class="td-strong td-ellipsis" title="' + LH.esc(r.customer) + '">' + LH.esc(r.customer || '—') + '</td>' +
         '<td>' + LH.esc(r.model) + '</td>' +
@@ -301,11 +393,18 @@
         '<button class="row-btn del" data-del="' + r.id + '">🗑</button></td></tr>';
     }).join('');
     var tb = LH.byId('retBody');
+    // 行点击直接进入编辑（电脑/手机更便捷）
+    tb.querySelectorAll('tr[data-row]').forEach(function (tr) {
+      tr.addEventListener('click', function (e) {
+        if (e.target.closest('.row-btn')) return;
+        editRecord(tr.getAttribute('data-row'));
+      });
+    });
     tb.querySelectorAll('[data-edit]').forEach(function (b) {
-      b.addEventListener('click', function () { editRecord(b.getAttribute('data-edit')); });
+      b.addEventListener('click', function (e) { e.stopPropagation(); editRecord(b.getAttribute('data-edit')); });
     });
     tb.querySelectorAll('[data-del]').forEach(function (b) {
-      b.addEventListener('click', function () { delRecord(b.getAttribute('data-del')); });
+      b.addEventListener('click', function (e) { e.stopPropagation(); delRecord(b.getAttribute('data-del')); });
     });
     LH.showEmpty('retEmpty', null, pg.rows, { icon: '🎖️', title: '暂无退货记录', sub: '在上方登记一笔退货，或点击「载入示例」' });
     pager('retPager', pg, function (p) { page.reg = p; renderReg(); });
@@ -704,6 +803,11 @@
       var show = (v === '不合格');
       LH.byId('issueWrap').style.display = show ? '' : 'none';
       if (show && !reasonSel.length) openReason();
+      // 选「合格」且备注为空时自动填默认备注「无理由」（与熨斗一致）
+      if (v === '合格') {
+        var noteEl = LH.byId('f_note');
+        if (noteEl && !noteEl.value.trim()) noteEl.value = '无理由';
+      }
     });
     LH.byId('f_craft').innerHTML = MATERIALS.map(function (c) { return '<option>' + c + '</option>'; }).join('');
     LH.byId('f_handle').innerHTML = HANDLES.map(function (c) { return '<option>' + c + '</option>'; }).join('');
@@ -720,6 +824,25 @@
     LH.byId('repCancel').addEventListener('click', function () { LH.closeModal('repMask'); });
     LH.byId('repClose').addEventListener('click', function () { LH.closeModal('repMask'); });
     LH.bindMaskClose('repMask');
+
+    // 扫码弹窗（识别快递单号）
+    LH.byId('btnScan').addEventListener('click', openScan);
+    LH.byId('scanShot').addEventListener('click', scanShot);
+    LH.byId('scanManual').addEventListener('click', function () {
+      LH.closeModal('scanMask');
+      setTimeout(function () { LH.byId('f_express').focus(); }, 100);
+    });
+    LH.byId('scanCancel').addEventListener('click', function () { LH.closeModal('scanMask'); });
+    LH.byId('scanClose').addEventListener('click', function () { LH.closeModal('scanMask'); });
+    LH.bindMaskClose('scanMask');
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && LH.byId('scanMask').classList.contains('open')) {
+        stopScan(); LH.closeModal('scanMask');
+      }
+    });
+    LH.byId('scanMask').addEventListener('transitionend', function () {
+      if (!LH.byId('scanMask').classList.contains('open')) stopScan();
+    });
 
     // 筛选
     ['q_kw', 'q_insp', 'q_model'].forEach(function (id) {
