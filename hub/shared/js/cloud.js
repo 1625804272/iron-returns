@@ -48,6 +48,14 @@
     var p = String(path || '').replace(/^\/+/, '');
     return 'https://raw.githubusercontent.com/' + o + '/' + r + '/' + (branch || 'main') + '/' + p;
   }
+  /** jsDelivr CDN 地址（大陆/移动网络可用，无需 Token，支持 CORS）
+      作为 api / raw 主源失败时的「备用读取通道」——解决 api.github.com
+      在部分网络（尤其手机/大陆）被阻断导致的「拉取失败：网络不可用」。 */
+  function cdnUrl(path, owner, repo, branch) {
+    var o = owner || getCfg().owner, r = repo || getCfg().repo;
+    var p = String(path || '').replace(/^\/+/, '');
+    return 'https://cdn.jsdelivr.net/gh/' + o + '/' + r + '@' + (branch || 'main') + '/' + p;
+  }
 
   /* ---------- 编码 ---------- */
   function b64enc(str) { return btoa(unescape(encodeURIComponent(str))); }
@@ -59,20 +67,27 @@
     if (s === 401) return 'Token 无效或已过期（401）';
     if (s === 403) return '无权限或触发限流（403）';
     if (s === 404) return '仓库/文件不存在或无权限（404）';
-    if (e && e.offline) return '网络不可用，稍后自动重试';
+    if (e && e.offline) return '网络不可用（已尝试 CDN 备用通道仍失败），稍后自动重试';
     return (e && e.message) || '未知错误';
   }
 
   /* ================= 冷启动继承（匿名读取 public 仓库 raw 文件） =================
      返回 Promise<data|null>：成功返回解析后的 JSON；无数据或失败返回 null（静默） */
   function inherit(path, owner, repo, branch) {
+    // 主源 raw；网络错误 / 5xx 时自动切 CDN（静默兜底）
     return fetch(rawUrl(path, owner, repo, branch), { cache: 'no-store' })
       .then(function (r) {
-        if (!r.ok) return null;
+        if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
         return r.json();
       })
       .then(function (j) { return j || null; })
-      .catch(function () { return null; });   // 静默失败：不影响页面正常使用
+      .catch(function (e) {
+        // 404（文件不存在）等明确错误不重试；网络错误 / 5xx 才切 CDN
+        if (e && e.status && e.status !== 404 && e.status < 500) return null;
+        return fetch(cdnUrl(path, owner, repo, branch), { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .catch(function () { return null; });
+      });
   }
 
   /* ================= 云端读取（需 Token） =================
@@ -92,8 +107,17 @@
         });
       })
       .catch(function (e) {
-        if (!e.status) e.offline = true;
-        return { ok: false, error: errText(e) };
+        // 网络不可用 / 5xx → 用 CDN 兜底读取（无 sha，但能读到数据）
+        if (!e.status || e.status >= 500) {
+          return fetch(cdnUrl(path), { cache: 'no-store' })
+            .then(function (r) {
+              if (!r.ok) { var e2 = new Error('HTTP ' + r.status); e2.status = r.status; throw e2; }
+              return r.json();
+            })
+            .then(function (data) { return { ok: true, exists: true, data: data, sha: null, viaCdn: true }; })
+            .catch(function (e2) { if (!e2.status) e2.offline = true; return { ok: false, error: errText(e2), offline: !e2.status }; });
+        }
+        return { ok: false, error: errText(e), offline: !!e.offline };
       });
   }
 
@@ -120,7 +144,7 @@
       .then(function (j) { return { ok: true, sha: (j.content && j.content.sha) || sha }; })
       .catch(function (e) {
         if (!e.status) e.offline = true;
-        return { ok: false, error: errText(e) };
+        return { ok: false, error: errText(e), offline: !!e.offline };
       });
   }
 
@@ -135,7 +159,7 @@
     }).then(function (u) { return { ok: true, login: u.login || '' }; })
       .catch(function (e) {
         if (!e.status) e.offline = true;
-        return { ok: false, error: errText(e) };
+        return { ok: false, error: errText(e), offline: !!e.offline };
       });
   }
 
