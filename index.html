@@ -566,7 +566,7 @@
   <div class="modal scan-modal">
     <div class="modal-h"><h3>🔓 解锁全局修改</h3><button class="x" onclick="closeAuth()">✕</button></div>
     <div class="modal-b">
-      <p class="scan-tip" style="text-align:left">受限模式下<b>仅可修改退货登记</b>（补发跟踪、统计仅可查看）。输入管理账号密码后可执行 编辑/删除/清空/载入示例/导入恢复/补发登记/云同步 等全局操作。</p>
+      <p class="scan-tip" style="text-align:left">日常操作<b>均免密</b>：退货登记、扫码检验、修改登记、补发登记、统计查询、云设置（启用后自动同步云端）。<br>管理密码仅保护不可逆操作：<b>删除记录、删除补发、清空数据、载入示例、导入恢复</b>。</p>
       <div class="field"><label>用户名</label><input type="text" id="auth_user" autocomplete="off"></div>
       <div class="field"><label>密码</label><input type="password" id="auth_pass" autocomplete="off" onkeydown="if(event.key==='Enter')tryAuth()"></div>
       <p class="scan-tip" id="authMsg" style="margin-top:10px"></p>
@@ -706,7 +706,7 @@ function isAdmin(){ return localStorage.getItem(ADMIN_LS) === "1"; }
 function setAdmin(v){ if (v) localStorage.setItem(ADMIN_LS, "1"); else localStorage.removeItem(ADMIN_LS); syncAdminBtn(); }
 function requireAdmin(){
   if (isAdmin()) return true;
-  toast("🔒 该操作需要管理密码解锁");
+  toast("🔒 删除/清空/导入等破坏性操作需管理密码解锁");
   showAuth();
   return false;
 }
@@ -714,7 +714,7 @@ function syncAdminBtn(){
   const b = $("adminBtn"); if (!b) return;
   b.textContent = isAdmin() ? "🔓 已解锁" : "🔒 解锁";
 }
-function toggleAuth(){ if (isAdmin()){ setAdmin(false); toast("已锁定：仅可修改退货登记"); } else showAuth(); }
+function toggleAuth(){ if (isAdmin()){ setAdmin(false); toast("已锁定：日常操作免密，破坏性操作需解锁"); } else showAuth(); }
 function showAuth(){
   $("auth_user").value = ADMIN_USER;
   $("auth_pass").value = "";
@@ -726,7 +726,7 @@ function closeAuth(){ $("authMask").classList.remove("on"); }
 function tryAuth(){
   const u = ($("auth_user").value || "").trim();
   const p = $("auth_pass").value || "";
-  if (u === ADMIN_USER && p === ADMIN_PASS){ setAdmin(true); closeAuth(); toast("✅ 已解锁全局修改"); }
+  if (u === ADMIN_USER && p === ADMIN_PASS){ setAdmin(true); closeAuth(); toast("✅ 已解锁：可执行删除/清空等操作"); }
   else { const m = $("authMsg"); m.textContent = "用户名或密码错误"; m.className = "scan-tip err"; }
 }
 const sum = (arr, f) => arr.reduce((a,b) => a + f(b), 0);
@@ -930,7 +930,7 @@ function renderReturns(){
   }
   updateSideStats();
 }
-function editRet(id){ if (!requireAdmin()) return;
+function editRet(id){
   const r = returns.find(x => x.id === id); if (!r) return;
   editId = id;
   $("formTitle").textContent = "编辑退货记录";
@@ -1091,7 +1091,7 @@ function renderTrack(){
 }
 
 /* ---- 补发弹窗 ---- */
-function openRep(retId){ if (!requireAdmin()) return;
+function openRep(retId){
   repTarget = returns.find(r => r.id === retId); if (!repTarget) return;
   const st = repStatus(repTarget);
   $("repTitle").textContent = st.left > 0 ? "补发登记" : "补发明细";
@@ -1132,6 +1132,7 @@ function renderRepHist(){
     : '<div style="font-size:.82rem;color:var(--ink3)">暂无补发记录</div>';
 }
 function delRep(id){
+  if (!requireAdmin()) return;
   if (!confirm("删除这条补发记录？")) return;
   reps = reps.filter(r => r.id !== id);
   saveAll(); renderRepHist(); renderTrack(); renderReturns(); toast("已删除");
@@ -1652,7 +1653,7 @@ function catchUpDailyBackup(){
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0, 0);
   if (now >= target) autoBackup("daily", true);
 }
-function openCloud(){ if (!requireAdmin()) return;
+function openCloud(){
   loadCloudSettings();
   $("c_enabled").checked = !!cloudCfg.enabled;
   $("c_token").value = cloudCfg.token || "";
