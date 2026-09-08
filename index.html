@@ -274,6 +274,7 @@
     <nav class="side-nav tabs">
       <button class="nav-tab on" data-v="v1"><span class="ic">📝</span>退货登记</button>
       <button class="nav-tab" data-v="vInspect"><span class="ic">🔍</span>检验开单</button>
+      <button class="nav-tab" data-v="v4"><span class="ic">📋</span>已检记录</button>
       <button class="nav-tab" data-v="v2"><span class="ic">🚚</span>补发跟踪</button>
       <button class="nav-tab" data-v="v3"><span class="ic">📊</span>统计查询</button>
     </nav>
@@ -373,7 +374,7 @@
 
         <div class="card">
           <div class="card-head">
-            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>退货记录 <span style="color:var(--ink3);font-weight:400;font-size:.82rem" id="retCount"></span></h2>
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>待检验记录 <span style="color:var(--ink3);font-weight:400;font-size:.82rem" id="retCount"></span></h2>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ 导出退货CSV</button>
               <button class="btn btn-ghost btn-sm" onclick="exportRepCSV()">⬇ 导出补发CSV</button>
@@ -383,9 +384,7 @@
           </div>
           <div class="filter-bar" style="box-shadow:none;padding:0 0 14px;border:none;margin-bottom:12px">
             <div class="field" style="min-width:200px"><label>搜索</label><input id="q1" placeholder="型号 / 颜色 / 供应商 / 订单号 / 问题描述" oninput="renderReturns()"></div>
-            <div class="field" style="min-width:130px"><label>检验情况</label>
-              <select id="q1_insp" onchange="renderReturns()"><option value="">全部</option><option>缺料</option><option>合格</option><option>不合格</option></select>
-            </div>
+            <span style="align-self:end;color:var(--ink3);font-size:.82rem;padding-bottom:5px">本栏仅显示<b>未检验</b>记录；已检验记录在「已检记录」栏</span>
           </div>
           <div class="tbl-wrap" id="retWrap">
             <table>
@@ -450,6 +449,35 @@
             <div class="empty" id="insEmpty" style="display:none"><span class="ico">✅</span>暂无待检验订单</div>
           </div>
           <div class="m-list" id="insCards" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图5：已检记录 ===== -->
+      <section id="v4" class="view">
+        <div class="card">
+          <div class="card-head">
+            <h2 class="section" style="margin-bottom:0"><span class="dot"></span>已检验记录 <span style="color:var(--ink3);font-weight:400;font-size:.82rem" id="ckCount"></span></h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ 导出退货CSV</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportRepCSV()">⬇ 导出补发CSV</button>
+            </div>
+          </div>
+          <div class="filter-bar" style="box-shadow:none;padding:0 0 14px;border:none;margin-bottom:12px">
+            <div class="field" style="min-width:200px"><label>搜索</label><input id="ck_q" placeholder="型号 / 颜色 / 供应商 / 订单号 / 问题描述" oninput="renderChecked()"></div>
+            <div class="field" style="min-width:130px"><label>检验情况</label>
+              <select id="ck_insp" onchange="renderChecked()"><option value="">全部</option><option>合格</option><option>不合格</option><option>缺料</option></select>
+            </div>
+          </div>
+          <div class="tbl-wrap" id="ckWrap">
+            <table>
+              <thead><tr>
+                <th>退货日期</th><th>订单号</th><th>快递单号</th><th>型号</th><th>颜色</th><th>电压</th><th>插头</th><th>数量</th><th>供应商</th><th>检验</th><th>问题描述</th><th>备注</th><th>补发进度</th><th>操作</th>
+              </tr></thead>
+              <tbody id="ckTbody"></tbody>
+            </table>
+            <div class="empty" id="ckEmpty" style="display:none"><span class="ico">📋</span>暂无已检验记录</div>
+          </div>
+          <div class="m-list" id="ckCards" style="display:none"></div>
         </div>
       </section>
 
@@ -557,6 +585,7 @@
 <nav class="bottom-nav">
   <button class="nav-tab on" data-v="v1"><span class="bi">📝</span><span>登记</span></button>
   <button class="nav-tab" data-v="vInspect"><span class="bi">🔍</span><span>检验</span></button>
+  <button class="nav-tab" data-v="v4"><span class="bi">📋</span><span>已检</span></button>
   <button class="nav-tab" data-v="v2"><span class="bi">🚚</span><span>补发</span></button>
   <button class="nav-tab" data-v="v3"><span class="bi">📊</span><span>统计</span></button>
 </nav>
@@ -786,18 +815,22 @@ const PAGE_META = {
   v1:{t:"退货登记", c:"填写订单号、快递单号与熨斗信息，登记后进入待检"},
   v2:{t:"补发跟踪", c:"关联每笔退货，跟踪供应商补发进度与状态"},
   v3:{t:"统计查询", c:"按型号 / 颜色 / 供应商 / 时间段汇总对账"},
-  vInspect:{t:"检验开单", c:"扫描快递单号开检，填写退货熨斗的检验结果"}
+  vInspect:{t:"检验开单", c:"扫描快递单号开检，填写退货熨斗的检验结果"},
+  v4:{t:"已检记录", c:"已检验完成的退货记录，可继续编辑基础信息（检验结果保留）"}
 };
-document.querySelectorAll(".nav-tab").forEach(b => b.onclick = () => {
-  document.querySelectorAll(".nav-tab").forEach(x => x.classList.toggle("on", x.dataset.v === b.dataset.v));
-  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === b.dataset.v));
-  const m = PAGE_META[b.dataset.v];
+function showView(v){
+  document.querySelectorAll(".nav-tab").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+  document.querySelectorAll(".view").forEach(x => x.classList.toggle("on", x.id === v));
+  const m = PAGE_META[v]; if (!m) return;
   $("pageTitle").textContent = m.t; $("pageCrumb").textContent = m.c;
-  if (b.dataset.v === "v2") renderTrack();
-  if (b.dataset.v === "v3") renderStats();
-  if (b.dataset.v === "vInspect") renderInspectList();
+  if (v === "v1"){ renderReturns(); renderChecked(); }
+  else if (v === "v2") renderTrack();
+  else if (v === "v3") renderStats();
+  else if (v === "v4") renderChecked();
+  else if (v === "vInspect") renderInspectList();
   updateSideStats();
-});
+}
+document.querySelectorAll(".nav-tab").forEach(b => b.onclick = () => showView(b.dataset.v));
 
 /* ================= 表单：级联下拉 ================= */
 function initForm(){
@@ -840,9 +873,7 @@ $("btnSave").onclick = () => {
     qty: parseInt($("f_qty").value) || 0,
     supplier: $("f_supplier").value.trim(),
     express: $("f_express").value.trim(),
-    note: $("f_note").value.trim(),
-    insp: "", reasons: [], issue: "",
-    status: "registered"
+    note: $("f_note").value.trim()
   };
   if (!rec.date) return toast("请选择退货日期");
   if (!rec.orderNo) return toast("请填写订单号");
@@ -852,13 +883,14 @@ $("btnSave").onclick = () => {
   if (editId){
     const i = returns.findIndex(r => r.id === editId);
     const prev = returns[i];
-    returns[i] = Object.assign({}, prev, rec);
+    returns[i] = Object.assign({}, prev, rec);   // 保留 prev 的 insp/reasons/issue/status：已检验记录编辑不丢结果
     returns[i].status = prev.status || "registered";
-    toast("退货记录已更新");
+    toast(prev.status === "inspected" ? "已更新（检验结果已保留）" : "退货记录已更新");
   } else {
-    returns.unshift(rec); toast("退货登记成功，已进入待检");
+    returns.unshift(Object.assign({}, rec, { insp:"", reasons:[], issue:"", status:"registered" }));
+    toast("退货登记成功，已进入待检");
   }
-  saveAll(); resetForm(); renderReturns(); renderInspectList(); refreshSuppliers();
+  saveAll(); resetForm(); renderReturns(); renderChecked(); renderInspectList(); refreshSuppliers();
 };
 $("btnReset").onclick = resetForm;
 function resetForm(){
@@ -874,64 +906,91 @@ function resetForm(){
 }
 
 /* ================= 退货记录列表 ================= */
+/* 排序：退货日期 新 → 旧（同日保持录入顺序） */
+const byDateDesc = (a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+/* 退货登记栏：仅未检验（待检）记录 */
 function renderReturns(){
   const kw = $("q1").value.trim().toLowerCase();
-  const fi = $("q1_insp").value;
   const list = returns.filter(r =>
+    r.status !== "inspected" &&
+    (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express, r.note, (r.reasons || []).join(" ")].join(" ").toLowerCase().includes(kw))
+  ).sort(byDateDesc);
+  $("retCount").textContent = `（${list.length} 笔待检 / ${sum(list, r => +r.qty)} 台）`;
+  renderRetList(list, {
+    wrap: $("retWrap"), tbody: $("retTbody"), cards: $("retCards"), empty: $("retEmpty"),
+    emptyTxt: '<span class="ico">📦</span>暂无待检验记录，登记后自动出现在这里'
+  });
+  updateSideStats();
+}
+/* 已检记录栏：已检验（合格/不合格/缺料），可继续编辑基础信息（检验结果保留） */
+function renderChecked(){
+  const kw = $("ck_q").value.trim().toLowerCase();
+  const fi = $("ck_insp").value;
+  const list = returns.filter(r =>
+    r.status === "inspected" &&
     (!fi || r.insp === fi) &&
     (!kw || [r.model, r.color, r.supplier, r.issue, r.orderNo, r.express, r.note, (r.reasons || []).join(" ")].join(" ").toLowerCase().includes(kw))
-  );
-  $("retCount").textContent = `（共 ${list.length} 笔 / ${sum(list, r => +r.qty)} 台）`;
-  const wrap = $("retWrap"), cards = $("retCards");
+  ).sort(byDateDesc);
+  $("ckCount").textContent = `（共 ${list.length} 笔 / ${sum(list, r => +r.qty)} 台）`;
+  renderRetList(list, {
+    wrap: $("ckWrap"), tbody: $("ckTbody"), cards: $("ckCards"), empty: $("ckEmpty"),
+    emptyTxt: '<span class="ico">📋</span>暂无已检验记录，检验完成的订单会出现在这里'
+  });
+}
+function renderRetList(list, el){
   if (isMobile()){
-    wrap.style.display = "none"; cards.style.display = "flex";
-    cards.innerHTML = list.length ? list.map(r => {
-      const st = repStatus(r);
-      return `<div class="m-card">
-        <div class="m-card-h">
-          <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.color)} ${esc(r.volt)} ${esc(r.plug)}</span></div>
-          ${inspBadge(r.insp)}
-        </div>
-        <div class="m-grid">
-          <div><span>退货日期</span><i>${esc(r.date)}</i></div>
-          <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
-          <div><span>快递单号</span><i>${esc(r.express) || "—"}</i></div>
-          <div><span>数量</span><i>${r.qty} 台</i></div>
-          <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
-          <div><span>补发进度</span><i>${st.done}/${r.qty} ${st.name}</i></div>
-          ${(r.issue || (r.reasons || []).length) ? `<div class="full"><span>问题描述</span><i>${esc(issueText(r))}</i></div>` : ""}
-          ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
-        </div>
-        <div class="m-actions">
-          <button class="btn btn-ghost" onclick="editRet('${r.id}')">✏️ 编辑</button>
-          <button class="btn btn-danger" onclick="delRet('${r.id}')">🗑 删除</button>
-        </div>
-      </div>`;
-    }).join("") : '<div class="empty" style="display:block"><span class="ico">📦</span>暂无退货记录，请在上方登记</div>';
+    el.wrap.style.display = "none"; el.cards.style.display = "flex";
+    el.cards.innerHTML = list.length ? list.map(r => retCard(r)).join("")
+      : `<div class="empty" style="display:block">${el.emptyTxt}</div>`;
   } else {
-    wrap.style.display = ""; cards.style.display = "none";
-    $("retEmpty").style.display = list.length ? "none" : "";
-    $("retTbody").innerHTML = list.map(r => {
-      const st = repStatus(r);
-      const pct = Math.min(100, Math.round(st.done / r.qty * 100));
-      return `<tr>
-        <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
-        <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td>
-        <td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
-        <td>${inspBadge(r.insp)}</td>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(issueText(r))}">${issueText(r)}</td>
-        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
-        <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${st.done}/${r.qty}</span></div></td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="editRet('${r.id}')">编辑</button>
-          <button class="btn btn-danger btn-sm" onclick="delRet('${r.id}')">删除</button>
-        </td></tr>`;
-    }).join("");
+    el.wrap.style.display = ""; el.cards.style.display = "none";
+    el.empty.style.display = list.length ? "none" : "";
+    el.empty.innerHTML = el.emptyTxt;
+    el.tbody.innerHTML = list.map(r => retRow(r)).join("");
   }
-  updateSideStats();
+}
+function retRow(r){
+  const st = repStatus(r);
+  const pct = Math.min(100, Math.round(st.done / r.qty * 100));
+  return `<tr>
+    <td>${esc(r.date)}</td><td>${esc(r.orderNo) || "—"}</td><td>${esc(r.express) || "—"}</td><td><b>${esc(r.model)}</b></td><td>${esc(r.color)}</td>
+    <td>${esc(r.volt)}</td><td>${esc(r.plug)}</td>
+    <td><b>${r.qty}</b></td><td>${esc(r.supplier)}</td>
+    <td>${inspBadge(r.insp)}</td>
+    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(issueText(r))}">${issueText(r)}</td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note)}">${esc(r.note) || "—"}</td>
+    <td><div class="prog"><div class="prog-bar"><i style="width:${pct}%"></i></div><span>${st.done}/${r.qty}</span></div></td>
+    <td>
+      <button class="btn btn-ghost btn-sm" onclick="editRet('${r.id}')">编辑</button>
+      <button class="btn btn-danger btn-sm" onclick="delRet('${r.id}')">删除</button>
+    </td></tr>`;
+}
+function retCard(r){
+  const st = repStatus(r);
+  return `<div class="m-card">
+    <div class="m-card-h">
+      <div class="m-t"><b>${esc(r.model)}</b><span>${esc(r.color)} ${esc(r.volt)} ${esc(r.plug)}</span></div>
+      ${inspBadge(r.insp)}
+    </div>
+    <div class="m-grid">
+      <div><span>退货日期</span><i>${esc(r.date)}</i></div>
+      <div><span>订单号</span><i>${esc(r.orderNo) || "—"}</i></div>
+      <div><span>快递单号</span><i>${esc(r.express) || "—"}</i></div>
+      <div><span>数量</span><i>${r.qty} 台</i></div>
+      <div><span>供应商</span><i>${esc(r.supplier)}</i></div>
+      <div><span>补发进度</span><i>${st.done}/${r.qty} ${st.name}</i></div>
+      ${(r.issue || (r.reasons || []).length) ? `<div class="full"><span>问题描述</span><i>${esc(issueText(r))}</i></div>` : ""}
+      ${r.note ? `<div class="full"><span>备注</span><i>${esc(r.note)}</i></div>` : ""}
+    </div>
+    <div class="m-actions">
+      <button class="btn btn-ghost" onclick="editRet('${r.id}')">✏️ 编辑</button>
+      <button class="btn btn-danger" onclick="delRet('${r.id}')">🗑 删除</button>
+    </div>
+  </div>`;
 }
 function editRet(id){
   const r = returns.find(x => x.id === id); if (!r) return;
+  showView("v1");
   editId = id;
   $("formTitle").textContent = "编辑退货记录";
   $("btnSave").textContent = "保存修改";
@@ -946,12 +1005,12 @@ function delRet(id){ if (!requireAdmin()) return;
   if (!confirm(`确定删除这条退货记录？\n${r.date} ${r.model} ${r.color} ×${r.qty}\n关联的补发记录也会一并删除。`)) return;
   returns = returns.filter(x => x.id !== id);
   reps = reps.filter(x => x.returnId !== id);
-  saveAll(); renderReturns(); toast("已删除");
+  saveAll(); renderReturns(); renderChecked(); toast("已删除");
 }
 function clearAll(){ if (!requireAdmin()) return;
   if (!returns.length) return toast("没有数据");
   if (confirm("⚠️ 确定清空全部退货与补发数据？此操作不可恢复！")) {
-    returns = []; reps = []; saveAll(); renderReturns(); refreshSuppliers(); toast("已清空全部数据");
+    returns = []; reps = []; saveAll(); renderReturns(); renderChecked(); refreshSuppliers(); toast("已清空全部数据");
   }
 }
 function refreshSuppliers(){
@@ -1027,7 +1086,7 @@ function saveInspect(){
   returns[i].issue = insp === "不合格" ? _nb : "";
   returns[i].note = _nb;
   returns[i].status = "inspected";
-  saveAll(); closeInspectForm(); renderInspectList(); renderReturns(); updateSideStats();
+  saveAll(); closeInspectForm(); renderInspectList(); renderReturns(); renderChecked(); updateSideStats();
   toast("检验已保存：" + insp);
 }
 
@@ -1116,7 +1175,7 @@ function saveRep(){
   if (qty > st.left && !confirm(`本次补发 ${qty} 台，超出未补数量 ${st.left} 台，确定继续？`)) return;
   reps.push({ id: uid(), returnId: repTarget.id, date: $("r_date").value, qty,
     model: $("r_model").value.trim() || repTarget.model, note: $("r_note").value.trim() });
-  saveAll(); renderRepHist(); renderTrack(); renderReturns();
+  saveAll(); renderRepHist(); renderTrack(); renderReturns(); renderChecked();
   toast("补发登记成功");
   const nst = repStatus(repTarget);
   if (nst.left <= 0) closeRep();
@@ -1135,7 +1194,7 @@ function delRep(id){
   if (!requireAdmin()) return;
   if (!confirm("删除这条补发记录？")) return;
   reps = reps.filter(r => r.id !== id);
-  saveAll(); renderRepHist(); renderTrack(); renderReturns(); toast("已删除");
+  saveAll(); renderRepHist(); renderTrack(); renderReturns(); renderChecked(); toast("已删除");
 }
 
 /* ================= 统计查询 ================= */
@@ -1324,7 +1383,7 @@ function importJSON(input){ if (!requireAdmin()) return;
         return toast("文件格式不正确，请选择本系统导出的备份文件");
       if (!confirm(`备份包含 ${data.returns.length} 笔退货、${data.reps.length} 条补发记录。\n恢复后将【覆盖】当前全部数据，确定继续？`)) return;
       returns = data.returns; reps = data.reps;
-      saveAll(); resetForm(); renderReturns(); refreshSuppliers();
+      saveAll(); resetForm(); renderReturns(); renderChecked(); refreshSuppliers();
       toast("数据恢复成功");
     } catch(e){ toast("文件解析失败，请检查文件"); }
   };
@@ -1349,7 +1408,7 @@ function seedDemo(){ if (!requireAdmin()) return;
   reps.push({id: uid(), returnId: d.id, date:"2026-08-10", qty:2, model:"M2", note:"顺丰 SF123456"});
   const d3 = returns.find(r => r.model === "L2");
   reps.push({id: uid(), returnId: d3.id, date:"2026-08-09", qty:3, model:"L2", note:"已补完"});
-  saveAll(); renderReturns(); refreshSuppliers(); toast("示例数据已载入");
+  saveAll(); renderReturns(); renderChecked(); refreshSuppliers(); toast("示例数据已载入");
 }
 
 /* ================= 扫码识别快递单号 ================= */
@@ -1567,14 +1626,14 @@ function initCloud(){
       if (!res.ok) updateCloudChip("拉取失败");
       return res;
     }).finally(() => {
-      renderReturns(); refreshSuppliers(); updateSideStats();
+      renderReturns(); renderChecked(); refreshSuppliers(); updateSideStats();
       // 自动备份：打开网站同步完成后备份一次；并调度 17:00 备份
       autoBackup("open", true);
       catchUpDailyBackup();
       scheduleDailyBackup();
     });
   } else {
-    updateCloudChip("本地"); renderReturns(); refreshSuppliers(); updateSideStats();
+    updateCloudChip("本地"); renderReturns(); renderChecked(); refreshSuppliers(); updateSideStats();
     scheduleDailyBackup();
   }
 }
@@ -1691,7 +1750,7 @@ function saveCloudSettingsUI(){
       if (!pr.ok){ cloudMsg("连接失败：" + pr.error, true); updateCloudChip("拉取失败"); return; }
       pushCloud().then(ps => {
         if (!ps.ok){ cloudMsg("保存成功，但推送失败：" + ps.error, true); updateCloudChip("同步失败"); return; }
-        renderReturns(); refreshSuppliers(); updateSideStats();
+        renderReturns(); renderChecked(); refreshSuppliers(); updateSideStats();
         cloudMsg("连接成功 ✅ GitHub 账号 " + vr.login + "，数据已与云端合并");
         toast("云端同步已开启");
       });
@@ -1712,7 +1771,7 @@ function cloudSyncNow(){
       if (!pr.ok){ cloudMsg("拉取失败：" + pr.error, true); updateCloudChip("拉取失败"); return; }
       pushCloud().then(ps => {
         if (!ps.ok){ cloudMsg("推送失败：" + ps.error, true); updateCloudChip("同步失败"); return; }
-        renderReturns(); refreshSuppliers(); updateSideStats();
+        renderReturns(); renderChecked(); refreshSuppliers(); updateSideStats();
         cloudMsg("同步完成 ✅ " + vr.login + "，本地 ↔ 云端数据一致");
         updateCloudChip("已同步"); toast("同步完成");
       });
@@ -1726,9 +1785,10 @@ window.addEventListener("resize", () => {
   clearTimeout(_rsTm);
   _rsTm = setTimeout(() => {
     const v = document.querySelector(".view.on");
-    if (v && v.id === "v1") renderReturns();
+    if (v && v.id === "v1"){ renderReturns(); renderChecked(); }
     else if (v && v.id === "v2") renderTrack();
     else if (v && v.id === "v3") renderStats();
+    else if (v && v.id === "v4") renderChecked();
     else if (v && v.id === "vInspect") renderInspectList();
   }, 150);
 });
