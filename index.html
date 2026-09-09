@@ -1552,10 +1552,14 @@ function apiErr(e){
   return e.message || String(e);
 }
 function persistLocal(){ localStorage.setItem(LS_RET, JSON.stringify(returns)); localStorage.setItem(LS_REP, JSON.stringify(reps)); }
+let pushBusy = false;
 function schedulePush(){
   if (!cloudActive()) return;
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => { updateCloudChip("同步中"); pushCloud(); }, 700);
+  pushTimer = setTimeout(() => {
+    if (pushBusy){ schedulePush(); return; }   // 上一次推送未完成 → 排队稍后再推，防止并发互相覆盖
+    updateCloudChip("同步中"); pushCloud();
+  }, 700);
 }
 function mergeCloud(cloud){
   const m = new Map();
@@ -1593,30 +1597,69 @@ function pullCloud(){
       updateCloudChip("已同步");
       return { ok:true, exists:true };
     })
-    .catch(e => { updateCloudChip("拉取失败"); console.warn("pullCloud:", e); return { ok:false, error:apiErr(e) }; });
+    .catch(e => { updateCloudChip("拉取失败·离线可编辑(推送前自动合并云端)"); console.warn("pullCloud:", e); return { ok:false, error:apiErr(e) }; });
 }
-/* 推送本地数据到云端：成功返回 {ok:true}；失败返回 {ok:false, error}（失败自动重试 3 次） */
-function pushCloud(){
-  if (!cloudActive()) return Promise.resolve({ ok:true, skipped:true });
-  updateCloudChip("同步中");
-  const payload = { app:"iron-returns", version:1, savedAt:new Date().toISOString(), returns, reps };
-  const content = b64enc(JSON.stringify(payload));
-  const headers = ghHeaders(); headers["Content-Type"] = "application/json";
-  const body = { message:"sync returns data", content, committer:{ name:"iron-app", email:"app@local" } };
-  return fetch(cloudApiUrl(), { headers })
-    .then(r => r.status === 404 ? null : (r.ok ? r.json() : Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status }))))
-    .then(j => { if (j) body.sha = j.sha; return fetch(cloudApiUrl(), { method:"PUT", headers, body: JSON.stringify(body) }); })
-    .then(r => { if (!r.ok) return Promise.reject(Object.assign(new Error("HTTP " + r.status), { status:r.status })); return r.json(); })
-    .then(j => {
-      cloudCfg.sha = (j.content && j.content.sha) || cloudCfg.sha; saveCloudSettings();
-      pushRetry = 0; updateCloudChip("已同步"); return { ok:true };
-    })
-    .catch(e => {
-      console.warn("pushCloud:", e);
-      if (cloudActive() && pushRetry < 3){ pushRetry++; updateCloudChip("同步失败·自动重试中"); pushTimer = setTimeout(() => pushCloud(), 15000); }
-      else { pushRetry = 0; updateCloudChip("同步失败"); }
-      return { ok:false, error:apiErr(e) };
-    });
+/* 推送本地数据到云端（防覆盖版）：
+   核心原则：绝不拿可能更旧的本地数据直接覆盖云端。
+   1) 先读云端现状：若云端 sha 与本地记录不一致（被其它设备改过），或本地从未成功同步但云端已有文件
+      → 先把云端数据合并进本地（union by id，同 id 本地优先），再推送 → 云端记录一条都不会丢；
+   2) PUT 返回 409（推送瞬间又被其它端写入）→ 再次合并云端后重推，最多 3 轮；
+   3) 超过 3 轮仍冲突 → 中止本次推送并提示（不再强行覆盖）；
+   4) pushBusy 锁保证同一时刻只有一个推送在跑。
+   成功返回 {ok:true}；失败返回 {ok:false, error}（失败自动重试 3 次）。 */
+async function pushCloud(){
+  if (!cloudActive()) return { ok:true, skipped:true };
+  if (pushBusy){ schedulePush(); return { ok:true, queued:true }; }
+  pushBusy = true;
+  try {
+    for (let round = 0; round < 3; round++){
+      updateCloudChip(round ? "同步中·合并云端" : "同步中");
+      // 1) 读云端现状
+      const g = await fetch(cloudApiUrl(), { headers: ghHeaders() })
+        .catch(() => { const e = new Error("网络连接失败"); e.status = 0; throw e; });
+      let j = null;
+      if (g.status === 404) j = null;
+      else if (g.ok) j = await g.json();
+      else { const e = new Error("HTTP " + g.status); e.status = g.status; throw e; }
+      const cloudSha = j ? j.sha : null;
+      // 2) 防覆盖：云端存在且版本与本地记录不一致 → 云端可能有本地没有的数据，先合并再推
+      if (j && cloudSha !== cloudCfg.sha){
+        try {
+          const cloud = JSON.parse(b64dec(j.content));
+          mergeCloud(cloud);          // union by id，同 id 本地优先；云端独有记录并入本地
+          persistLocal();             // 合并结果立即落本地
+        } catch(err){
+          console.warn("云端数据合并失败(保留本地)：", err);   // 云端损坏则按本地推送
+        }
+        cloudCfg.sha = cloudSha; saveCloudSettings();
+      }
+      // 3) 推送（此时本地已含云端全部记录，覆盖安全）
+      const payload = { app:"iron-returns", version:1, savedAt:new Date().toISOString(), returns, reps };
+      const body = { message:"sync returns data", content: b64enc(JSON.stringify(payload)),
+                     committer:{ name:"iron-app", email:"app@local" } };
+      if (cloudCfg.sha) body.sha = cloudCfg.sha;                 // 创建时(无sha)不带，已有文件必须带
+      const headers = ghHeaders(); headers["Content-Type"] = "application/json";
+      const p = await fetch(cloudApiUrl(), { method:"PUT", headers, body: JSON.stringify(body) })
+        .catch(() => { const e = new Error("网络连接失败"); e.status = 0; throw e; });
+      if (p.status === 409 && round < 2){                        // 推的瞬间又被其它端写入
+        updateCloudChip("检测到并发修改·合并重试");
+        await pullCloud().catch(() => {});                       // 合并云端最新进本地，再进入下一轮
+        continue;
+      }
+      if (!p.ok){ const e = new Error("HTTP " + p.status); e.status = p.status; throw e; }
+      const jj = await p.json();
+      cloudCfg.sha = (jj.content && jj.content.sha) || cloudCfg.sha; saveCloudSettings();
+      pushBusy = false; updateCloudChip("已同步"); return { ok:true };
+    }
+    const ce = new Error("云端持续被其它设备更新，已中止本次覆盖，请稍后重试"); ce.status = 409;
+    throw ce;
+  } catch (e) {
+    console.warn("pushCloud:", e);
+    pushBusy = false;
+    if (cloudActive() && pushRetry < 3){ pushRetry++; updateCloudChip("同步失败·自动重试中"); pushTimer = setTimeout(() => pushCloud(), 15000); }
+    else { pushRetry = 0; updateCloudChip("同步失败"); }
+    return { ok:false, error:apiErr(e) };
+  }
 }
 function initCloud(){
   loadCloudSettings();
